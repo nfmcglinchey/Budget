@@ -14,24 +14,64 @@ h1, h2 {
 table {
     width: 100%;
     border-collapse: collapse;
-    margin: 20px 0;
+    margin: 10px 0;
+    table-layout: fixed; /* Ensures columns maintain a fixed width */
 }
 
-/* Uniform header and row height */
+/* Table Cells: Ensure proper spacing and prevent text bleeding */
 th, td {
     border: 1px solid #ddd;
-    padding: 5px 10px;
+    padding: 6px 8px; /* Adjusted padding for better fit */
     text-align: left;
-    font-size: 14px;
-    line-height: 1;
-    height: 30px;
+    font-size: 12px; /* Reduced font size to prevent overflow */
+    height: 32px; /* Slightly taller rows */
     vertical-align: middle;
+    white-space: normal; /* Allow text wrapping */
+    word-wrap: break-word; /* Ensures words do not break mid-letter */
+    overflow-wrap: break-word; /* Ensures words do not break abruptly */
+    word-break: keep-all; /* Keeps whole words on one line if possible */
+    hyphens: none; /* Prevents unnecessary hyphenation */
 }
 
 /* Header row styling */
 th {
     background-color: #f4f4f4;
     font-weight: bold;
+}
+
+/* Ensure consistent spacing between columns */
+th, td {
+    padding: 6px 8px;
+}
+
+/* Prevent words from breaking mid-line */
+th, td {
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: normal;
+}
+
+/* Category Column: Ensures text stays within its boundary */
+#budget-table th:nth-child(1),
+#budget-table td:nth-child(1) {
+    max-width: 180px; /* Increased column width */
+    min-width: 160px; /* Prevents it from getting too narrow */
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 10;
+    font-weight: bold;
+    border-right: 2px solid #ddd;
+}
+
+/* Budget Columns: Prevent overlap */
+th:nth-child(2), td:nth-child(2),  /* Monthly Budget */
+th:nth-child(3), td:nth-child(3),  /* Weekly Budget */
+th:nth-child(4), td:nth-child(4),  /* Actual (Month) */
+th:nth-child(5), td:nth-child(5) { /* Actual (Week) */
+    text-align: center;
+    max-width: 100px; /* Wider columns to prevent number spillover */
+    min-width: 90px;
 }
 
 /* Ensure the Description column has enough space */
@@ -45,13 +85,13 @@ th {
 button {
     display: block;
     margin: 5px auto;
-    padding: 4px 8px;
+    padding: 6px 10px;
     background: #007bff;
     color: white;
     border: none;
     cursor: pointer;
     font-size: 14px;
-    height: 30px;
+    height: 32px;
 }
 
 /* Hover effect for buttons */
@@ -114,15 +154,28 @@ button {
 /* Improve mobile layout */
 @media screen and (max-width: 768px) {
     table {
-        font-size: 14px;
+        font-size: 11px; /* Slightly smaller text for better fit */
     }
 
     th, td {
-        padding: 5px;
+        padding: 5px 6px; /* Slightly reduce padding for smaller screens */
         height: 30px;
     }
 
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5) {
+        min-width: 80px; /* Prevents squeezing on mobile */
+    }
+
     button {
+        width: 100%;
+    }
+
+    /* Allow table to scroll if it still overflows */
+    #budget-section {
+        overflow-x: auto;
         width: 100%;
     }
 }
