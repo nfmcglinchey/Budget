@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Budget Tracker</h1>
+
+    <!-- Budget Section -->
+    <div id="budget-section">
+        <h2>Budget</h2>
+        <table id="budget-table">
+            <tr>
+                <th>Category</th>
+                <th>Monthly Budget</th>
+                <th>Weekly Budget</th>
+                <th>Actual (Month)</th>
+                <th>Actual (Week)</th>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Expenses Section -->
+    <div id="expenses-section">
+        <h2>Expenses</h2>
+        <label for="filter-month">Filter by Month:</label>
+        <select id="filter-month"></select>
+        <label for="filter-year">Year:</label>
+        <select id="filter-year"></select>
+
+        <table id="expenses-table">
+            <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Action</th>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Add Expense Section -->
+    <div id="add-expense-section">
+        <h2>Add Expense</h2>
+        <label for="expense-date">Date:</label>
+        <input type="date" id="expense-date">
+
+        <label for="expense-category">Category:</label>
+        <select id="expense-category"></select>
+
+        <label for="expense-description">Description:</label>
+        <input type="text" id="expense-description">
+
+        <label for="expense-amount">Amount:</label>
+        <input type="number" id="expense-amount" step="0.01">
+
+        <button onclick="addExpense()">Add Expense</button>
+    </div>
+
+    <!-- Firebase SDK Setup -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA6ZFSK7jPIkiEv47yl8q-O1jh8DNvOsiI",
+            authDomain: "budget-data-b9bcc.firebaseapp.com",
+            databaseURL: "https://budget-data-b9bcc-default-rtdb.firebaseio.com",
+            projectId: "budget-data-b9bcc",
+            storageBucket: "budget-data-b9bcc.appspot.com",
+            messagingSenderId: "798831217373",
+            appId: "1:798831217373:web:0d011f497ad3b9ca85a934"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Expose Firebase globally for script.js to access
+        window.db = db;
+        window.ref = ref;
+        window.push = push;
+        window.onValue = onValue;
+        window.remove = remove;
+    </script>
+
+    <!-- Link to JavaScript file -->
+    <script src="script.js"></script>
+</body>
+</html>

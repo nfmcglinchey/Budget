@@ -1,0 +1,134 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    padding: 20px;
+}
+
+/* Center headings */
+h1, h2 {
+    text-align: center;
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+/* Uniform header and row height */
+th, td {
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+    text-align: left;
+    font-size: 14px;
+    line-height: 1;
+    height: 30px;
+    vertical-align: middle;
+}
+
+/* Header row styling */
+th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+/* Ensure the Description column has enough space */
+#expenses-table th:nth-child(3), 
+#expenses-table td:nth-child(3) {
+    min-width: 200px;
+    word-wrap: break-word;
+}
+
+/* Button Styles */
+button {
+    display: block;
+    margin: 5px auto;
+    padding: 4px 8px;
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    height: 30px;
+}
+
+/* Hover effect for buttons */
+button:hover {
+    background: #0056b3;
+}
+
+/* ---------- Mobile Layout Fixes & Fixed Category Column ---------- */
+
+/* Ensure the Add Expense section aligns labels to the left */
+#add-expense-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+#add-expense-section label {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-top: 5px;
+}
+
+#expense-date,
+#expense-category,
+#expense-description,  /* Ensure Description input fits well */
+#expense-amount,
+button {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Make the tables scrollable for smaller screens */
+#budget-section, #expenses-section {
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* Ensure the Category column remains fixed when scrolling */
+#budget-table, #expenses-table {
+    width: 100%;
+    border-collapse: collapse;
+    position: relative;
+}
+
+/* Fix first column (Category) to stay in place when scrolling */
+#budget-table th:nth-child(1),
+#budget-table td:nth-child(1),
+#expenses-table th:nth-child(2),
+#expenses-table td:nth-child(2) {
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 10;
+    font-weight: bold;
+    border-right: 2px solid #ddd;
+}
+
+/* Improve mobile layout */
+@media screen and (max-width: 768px) {
+    table {
+        font-size: 14px;
+    }
+
+    th, td {
+        padding: 5px;
+        height: 30px;
+    }
+
+    button {
+        width: 100%;
+    }
+}
+
+/* Ensure the Delete button doesn’t stretch */
+td button {
+    width: auto;
+    min-width: 70px;
+}
