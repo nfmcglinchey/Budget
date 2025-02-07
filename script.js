@@ -108,25 +108,29 @@ function loadExpenses() {
                                 <th>Action</th>
                              </tr>`;
 
+    // Reset budget totals
+    document.querySelectorAll("#budget-table tr").forEach((row, index) => {
+        if (index > 0) { // Skip header row
+            row.cells[3].textContent = "$0.00"; // Reset monthly total
+            row.cells[4].textContent = "$0.00"; // Reset weekly total
+        }
+    });
+
     // Load data from Firebase
     onValue(ref(db, "expenses"), (snapshot) => {
-        expensesTable.innerHTML = `<tr>
-                                    <th>Date</th>
-                                    <th>Category</th>
-                                    <th>Description</th>
-                                    <th>Amount</th>
-                                    <th>Action</th>
-                                 </tr>`;
-
         snapshot.forEach((childSnapshot) => {
             let expense = childSnapshot.val();
             let expenseId = childSnapshot.key;
+
             let row = expensesTable.insertRow();
             row.innerHTML = `<td>${expense.date}</td>
                              <td>${expense.category}</td>
                              <td>${expense.description || "—"}</td>
                              <td>$${expense.amount.toFixed(2)}</td>
                              <td><button onclick="deleteExpense('${expenseId}')">Delete</button></td>`;
+
+            // Update the budget totals dynamically
+            updateBudgetTotals(expense.category, expense.date, expense.amount);
         });
     });
 }
@@ -146,12 +150,29 @@ function addExpense() {
 
     let expenseData = { date: formattedDate, category, description, amount };
 
-    // Push to Firebase instead of localStorage
-    push(ref(db, "expenses"), expenseData);
+    // Push to Firebase
+    let expenseRef = push(ref(db, "expenses"), expenseData);
+
+    // Update budget totals
+    updateBudgetTotals(category, formattedDate, amount);
 }
 
 function deleteExpense(expenseId) {
-    remove(ref(db, "expenses/" + expenseId));
+    const expenseRef = ref(db, "expenses/" + expenseId);
+
+    onValue(expenseRef, (snapshot) => {
+        if (snapshot.exists()) {
+            let expense = snapshot.val();
+            let category = expense.category;
+            let amount = parseFloat(expense.amount);
+
+            // Remove the expense
+            remove(expenseRef);
+
+            // Update budget totals after delete
+            updateBudgetTotalsAfterDelete(category, amount);
+        }
+    }, { onlyOnce: true });
 }
 
 function updateBudgetTotals(category, expenseDate, amount) {
