@@ -15,6 +15,13 @@ function setDefaultDate() {
     }
 }
 
+// Function to format date from YYYY-MM-DD to DD/MM/YYYY
+function formatDate(isoDate) {
+    let dateParts = isoDate.split("-");
+    return `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+}
+
+// Function to load budget table
 function loadBudget() {
     let budgetTable = document.getElementById("budget-table");
     let categoryDropdown = document.getElementById("expense-category");
@@ -59,6 +66,7 @@ function loadBudget() {
     });
 }
 
+// Function to populate filter options
 function populateFilters() {
     let monthSelect = document.getElementById("filter-month");
     let yearSelect = document.getElementById("filter-year");
@@ -92,6 +100,7 @@ function populateFilters() {
     }
 }
 
+// Function to load expenses from Firebase
 function loadExpenses() {
     let expensesTable = document.getElementById("expenses-table");
 
@@ -108,33 +117,28 @@ function loadExpenses() {
                                 <th>Action</th>
                              </tr>`;
 
-    // Reset budget totals
-    document.querySelectorAll("#budget-table tr").forEach((row, index) => {
-        if (index > 0) { // Skip header row
-            row.cells[3].textContent = "$0.00"; // Reset monthly total
-            row.cells[4].textContent = "$0.00"; // Reset weekly total
-        }
-    });
-
-    // Load data from Firebase
     onValue(ref(db, "expenses"), (snapshot) => {
+        let expenseData = [];
+
         snapshot.forEach((childSnapshot) => {
             let expense = childSnapshot.val();
             let expenseId = childSnapshot.key;
+            expenseData.push({ ...expense, id: expenseId });
 
+            let formattedDate = formatDate(expense.date);
             let row = expensesTable.insertRow();
-            row.innerHTML = `<td>${expense.date}</td>
+            row.innerHTML = `<td>${formattedDate}</td>
                              <td>${expense.category}</td>
                              <td>${expense.description || "—"}</td>
                              <td>$${expense.amount.toFixed(2)}</td>
                              <td><button onclick="deleteExpense('${expenseId}')">Delete</button></td>`;
-
-            // Update the budget totals dynamically
-            updateBudgetTotals(expense.category, expense.date, expense.amount);
         });
+
+        expenseData.forEach(exp => updateBudgetTotals(exp.category, exp.date, exp.amount));
     });
 }
 
+// Function to add an expense
 function addExpense() {
     let date = document.getElementById("expense-date").value;
     let category = document.getElementById("expense-category").value;
@@ -146,38 +150,27 @@ function addExpense() {
         return;
     }
 
-    let formattedDate = new Date(date).toISOString().split('T')[0];
+    let expenseData = { date, category, description, amount };
 
-    let expenseData = { date: formattedDate, category, description, amount };
-
-    // Push to Firebase
-    let expenseRef = push(ref(db, "expenses"), expenseData);
-
-    // Update budget totals
-    updateBudgetTotals(category, formattedDate, amount);
+    push(ref(db, "expenses"), expenseData);
 }
 
+// Function to delete an expense
 function deleteExpense(expenseId) {
-    const expenseRef = ref(db, "expenses/" + expenseId);
+    if (!confirm("Are you sure you want to delete this expense?")) {
+        return;
+    }
 
-    onValue(expenseRef, (snapshot) => {
-        if (snapshot.exists()) {
-            let expense = snapshot.val();
-            let category = expense.category;
-            let amount = parseFloat(expense.amount);
-
-            // Remove the expense
-            remove(expenseRef);
-
-            // Update budget totals after delete
-            updateBudgetTotalsAfterDelete(category, amount);
-        }
-    }, { onlyOnce: true });
+    remove(ref(db, "expenses/" + expenseId));
 }
 
+// Function to update budget totals and apply color coding
 function updateBudgetTotals(category, expenseDate, amount) {
     let budgetTable = document.getElementById("budget-table");
     let rows = budgetTable.getElementsByTagName("tr");
+
+    let totalMonth = 0;
+    let totalWeek = 0;
 
     for (let i = 1; i < rows.length; i++) {
         let row = rows[i];
@@ -192,27 +185,28 @@ function updateBudgetTotals(category, expenseDate, amount) {
 
             actualMonthCell.textContent = `$${(currentMonthTotal + amount).toFixed(2)}`;
             actualWeekCell.textContent = `$${(currentWeekTotal + amount).toFixed(2)}`;
+
+            applyBudgetColors(actualMonthCell, parseFloat(actualMonthCell.textContent.replace("$", "")), parseFloat(row.cells[1].textContent.replace("$", "")));
+            applyBudgetColors(actualWeekCell, parseFloat(actualWeekCell.textContent.replace("$", "")), parseFloat(row.cells[2].textContent.replace("$", "")));
+        }
+
+        if (rowCategory !== "Total Discretionary") {
+            totalMonth += parseFloat(row.cells[3].textContent.replace("$", "")) || 0;
+            totalWeek += parseFloat(row.cells[4].textContent.replace("$", "")) || 0;
         }
     }
 }
 
-function updateBudgetTotalsAfterDelete(category, amount) {
-    let budgetTable = document.getElementById("budget-table");
-    let rows = budgetTable.getElementsByTagName("tr");
-
-    for (let i = 1; i < rows.length; i++) {
-        let row = rows[i];
-        let rowCategory = row.cells[0].textContent;
-
-        if (rowCategory === category) {
-            let actualMonthCell = row.cells[3];
-            let actualWeekCell = row.cells[4];
-
-            let currentMonthTotal = parseFloat(actualMonthCell.textContent.replace("$", "")) || 0;
-            let currentWeekTotal = parseFloat(actualWeekCell.textContent.replace("$", "")) || 0;
-
-            actualMonthCell.textContent = `$${(currentMonthTotal - amount).toFixed(2)}`;
-            actualWeekCell.textContent = `$${(currentWeekTotal - amount).toFixed(2)}`;
-        }
+// Function to apply color-coding based on budget status
+function applyBudgetColors(cell, actual, budget) {
+    if (actual > budget) {
+        cell.style.backgroundColor = "red";
+        cell.style.color = "white";
+    } else if (actual > budget * 0.75) {
+        cell.style.backgroundColor = "yellow";
+        cell.style.color = "black";
+    } else {
+        cell.style.backgroundColor = "green";
+        cell.style.color = "white";
     }
 }
