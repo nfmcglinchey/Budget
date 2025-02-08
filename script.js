@@ -5,12 +5,14 @@ document.addEventListener("DOMContentLoaded", function () {
     setDefaultDate();
 });
 
-// Function to auto-populate today's date
+// Function to auto-populate today's date based on the user's local timezone
 function setDefaultDate() {
     let dateInput = document.getElementById("expense-date");
     if (dateInput) {
         let today = new Date();
-        let formattedDate = today.toISOString().split('T')[0]; // Format YYYY-MM-DD for input field
+        let timezoneOffset = today.getTimezoneOffset() * 60000;
+        let localDate = new Date(today.getTime() - timezoneOffset);
+        let formattedDate = localDate.toISOString().split('T')[0];
         dateInput.value = formattedDate;
     }
 }
@@ -38,8 +40,7 @@ function loadBudget() {
         { name: "Haircuts", monthly: 52 },
         { name: "Alcohol", monthly: 150 },
         { name: "Weekly Allowance", monthly: 1040 },
-        { name: "Miscellaneous", monthly: 0 },
-        { name: "Total Discretionary", monthly: 3042 }
+        { name: "Miscellaneous", monthly: 0 }
     ];
 
     budgetTable.innerHTML = `<tr>
@@ -50,8 +51,14 @@ function loadBudget() {
                                 <th>Actual (Week)</th>
                              </tr>`;
 
+    let totalMonthlyBudget = 0;
+    let totalWeeklyBudget = 0;
+
     budget.forEach(category => {
         let weeklyBudget = (category.monthly * 12 / 52).toFixed(2);
+        totalMonthlyBudget += category.monthly;
+        totalWeeklyBudget += parseFloat(weeklyBudget);
+
         let row = budgetTable.insertRow();
         row.innerHTML = `<td>${category.name}</td>
                          <td>$${category.monthly.toFixed(2)}</td>
@@ -64,6 +71,15 @@ function loadBudget() {
         option.textContent = category.name;
         categoryDropdown.appendChild(option);
     });
+
+    // Append the total discretionary row
+    let totalRow = budgetTable.insertRow();
+    totalRow.id = "total-discretionary-row";
+    totalRow.innerHTML = `<td><strong>Total Discretionary</strong></td>
+                          <td><strong>$${totalMonthlyBudget.toFixed(2)}</strong></td>
+                          <td><strong>$${totalWeeklyBudget.toFixed(2)}</strong></td>
+                          <td><strong>$0.00</strong></td>
+                          <td><strong>$0.00</strong></td>`;
 }
 
 // Function to populate filter options
@@ -124,44 +140,20 @@ function loadExpenses() {
             let expense = childSnapshot.val();
             let expenseId = childSnapshot.key;
             expenseData.push({ ...expense, id: expenseId });
+        });
 
-            let formattedDate = formatDate(expense.date);
+        expenseData.forEach(exp => {
+            let formattedDate = formatDate(exp.date);
             let row = expensesTable.insertRow();
             row.innerHTML = `<td>${formattedDate}</td>
-                             <td>${expense.category}</td>
-                             <td>${expense.description || "—"}</td>
-                             <td>$${expense.amount.toFixed(2)}</td>
-                             <td><button onclick="deleteExpense('${expenseId}')">Delete</button></td>`;
+                             <td>${exp.category}</td>
+                             <td>${exp.description ? exp.description : "—"}</td>
+                             <td>$${exp.amount.toFixed(2)}</td>
+                             <td><button onclick="deleteExpense('${exp.id}')">Delete</button></td>`;
         });
 
         expenseData.forEach(exp => updateBudgetTotals(exp.category, exp.date, exp.amount));
     });
-}
-
-// Function to add an expense
-function addExpense() {
-    let date = document.getElementById("expense-date").value;
-    let category = document.getElementById("expense-category").value;
-    let description = document.getElementById("expense-description").value.trim();
-    let amount = parseFloat(document.getElementById("expense-amount").value);
-
-    if (!date || !category || isNaN(amount)) {
-        alert("Please fill all fields correctly.");
-        return;
-    }
-
-    let expenseData = { date, category, description, amount };
-
-    push(ref(db, "expenses"), expenseData);
-}
-
-// Function to delete an expense
-function deleteExpense(expenseId) {
-    if (!confirm("Are you sure you want to delete this expense?")) {
-        return;
-    }
-
-    remove(ref(db, "expenses/" + expenseId));
 }
 
 // Function to update budget totals and apply color coding
@@ -172,7 +164,7 @@ function updateBudgetTotals(category, expenseDate, amount) {
     let totalMonth = 0;
     let totalWeek = 0;
 
-    for (let i = 1; i < rows.length; i++) {
+    for (let i = 1; i < rows.length - 1; i++) { 
         let row = rows[i];
         let rowCategory = row.cells[0].textContent;
 
@@ -186,14 +178,18 @@ function updateBudgetTotals(category, expenseDate, amount) {
             actualMonthCell.textContent = `$${(currentMonthTotal + amount).toFixed(2)}`;
             actualWeekCell.textContent = `$${(currentWeekTotal + amount).toFixed(2)}`;
 
-            applyBudgetColors(actualMonthCell, parseFloat(actualMonthCell.textContent.replace("$", "")), parseFloat(row.cells[1].textContent.replace("$", "")));
-            applyBudgetColors(actualWeekCell, parseFloat(actualWeekCell.textContent.replace("$", "")), parseFloat(row.cells[2].textContent.replace("$", "")));
+            applyBudgetColors(actualMonthCell, currentMonthTotal + amount, parseFloat(row.cells[1].textContent.replace("$", "")));
+            applyBudgetColors(actualWeekCell, currentWeekTotal + amount, parseFloat(row.cells[2].textContent.replace("$", "")));
         }
 
-        if (rowCategory !== "Total Discretionary") {
-            totalMonth += parseFloat(row.cells[3].textContent.replace("$", "")) || 0;
-            totalWeek += parseFloat(row.cells[4].textContent.replace("$", "")) || 0;
-        }
+        totalMonth += parseFloat(row.cells[3].textContent.replace("$", "")) || 0;
+        totalWeek += parseFloat(row.cells[4].textContent.replace("$", "")) || 0;
+    }
+
+    let totalRow = document.getElementById("total-discretionary-row");
+    if (totalRow) {
+        totalRow.cells[3].innerHTML = `<strong>$${totalMonth.toFixed(2)}</strong>`;
+        totalRow.cells[4].innerHTML = `<strong>$${totalWeek.toFixed(2)}</strong>`;
     }
 }
 
