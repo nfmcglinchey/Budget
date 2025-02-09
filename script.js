@@ -1,35 +1,34 @@
 document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(setDefaultDate, 500);
     loadBudget();
     loadExpenses();
     populateFilters();
-    setDefaultDate();
 });
 
-// Function to auto-populate today's date based on the user's local timezone
+// Auto-populate today's date
 function setDefaultDate() {
     let dateInput = document.getElementById("expense-date");
-    if (dateInput) {
-        let today = new Date();
-        let timezoneOffset = today.getTimezoneOffset() * 60000;
-        let localDate = new Date(today.getTime() - timezoneOffset);
-        let formattedDate = localDate.toISOString().split('T')[0];
-        dateInput.value = formattedDate;
+    if (!dateInput) {
+        console.error("Date input field not found.");
+        return;
     }
+    let today = new Date();
+    dateInput.value = today.toISOString().split('T')[0];
 }
 
-// Function to format date from YYYY-MM-DD to DD/MM/YYYY
+// Format date from YYYY-MM-DD to DD/MM/YYYY
 function formatDate(isoDate) {
-    let dateParts = isoDate.split("-");
-    return `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+    let [year, month, day] = isoDate.split("-");
+    return `${day}/${month}/${year}`;
 }
 
-// Function to load budget table
+// Load budget table with categories
 function loadBudget() {
     let budgetTable = document.getElementById("budget-table");
     let categoryDropdown = document.getElementById("expense-category");
 
     if (!budgetTable || !categoryDropdown) {
-        console.error("Elements not found");
+        console.error("Budget table or category dropdown not found");
         return;
     }
 
@@ -51,72 +50,45 @@ function loadBudget() {
                                 <th>Actual (Week)</th>
                              </tr>`;
 
-    let totalMonthlyBudget = 0;
-    let totalWeeklyBudget = 0;
-
     budget.forEach(category => {
         let weeklyBudget = (category.monthly * 12 / 52).toFixed(2);
-        totalMonthlyBudget += category.monthly;
-        totalWeeklyBudget += parseFloat(weeklyBudget);
-
         let row = budgetTable.insertRow();
         row.innerHTML = `<td>${category.name}</td>
                          <td>$${category.monthly.toFixed(2)}</td>
                          <td>$${weeklyBudget}</td>
-                         <td>$0.00</td>
-                         <td>$0.00</td>`;
+                         <td class="actual-month">$0.00</td>
+                         <td class="actual-week">$0.00</td>`;
 
         let option = document.createElement("option");
         option.value = category.name;
         option.textContent = category.name;
         categoryDropdown.appendChild(option);
     });
-
-    // Append the total discretionary row
-    let totalRow = budgetTable.insertRow();
-    totalRow.id = "total-discretionary-row";
-    totalRow.innerHTML = `<td><strong>Total Discretionary</strong></td>
-                          <td><strong>$${totalMonthlyBudget.toFixed(2)}</strong></td>
-                          <td><strong>$${totalWeeklyBudget.toFixed(2)}</strong></td>
-                          <td><strong>$0.00</strong></td>
-                          <td><strong>$0.00</strong></td>`;
 }
 
-// Function to populate filter options
-function populateFilters() {
-    let monthSelect = document.getElementById("filter-month");
-    let yearSelect = document.getElementById("filter-year");
+// Add a new expense
+function addExpense() {
+    let date = document.getElementById("expense-date")?.value;
+    let category = document.getElementById("expense-category")?.value;
+    let description = document.getElementById("expense-description")?.value.trim();
+    let amount = parseFloat(document.getElementById("expense-amount")?.value);
 
-    if (!monthSelect || !yearSelect) {
-        console.error("Filter elements not found");
+    if (!date || !category || isNaN(amount) || amount <= 0) {
+        alert("Please fill out all fields with valid data.");
         return;
     }
 
-    let currentDate = new Date();
-    let currentMonth = currentDate.getMonth() + 1;
-    let currentYear = currentDate.getFullYear();
+    let newExpense = { date, category, description, amount };
 
-    monthSelect.innerHTML = "";
-    yearSelect.innerHTML = "";
-
-    for (let i = 1; i <= 12; i++) {
-        let option = document.createElement("option");
-        option.value = i;
-        option.textContent = new Date(2023, i - 1).toLocaleString('default', { month: 'long' });
-        if (i === currentMonth) option.selected = true;
-        monthSelect.appendChild(option);
-    }
-
-    for (let i = currentYear - 5; i <= currentYear + 5; i++) {
-        let option = document.createElement("option");
-        option.value = i;
-        option.textContent = i;
-        if (i === currentYear) option.selected = true;
-        yearSelect.appendChild(option);
-    }
+    push(ref(db, "expenses"), newExpense)
+        .then(() => {
+            console.log("Expense added successfully");
+            loadExpenses();
+        })
+        .catch(error => console.error("Error adding expense:", error));
 }
 
-// Function to load expenses from Firebase
+// Load expenses and update the budget
 function loadExpenses() {
     let expensesTable = document.getElementById("expenses-table");
 
@@ -142,29 +114,56 @@ function loadExpenses() {
             expenseData.push({ ...expense, id: expenseId });
         });
 
+        // Clear budget actuals before recalculating
+        resetBudgetActuals();
+
         expenseData.forEach(exp => {
             let formattedDate = formatDate(exp.date);
             let row = expensesTable.insertRow();
             row.innerHTML = `<td>${formattedDate}</td>
                              <td>${exp.category}</td>
-                             <td>${exp.description ? exp.description : "—"}</td>
+                             <td>${exp.description || "—"}</td>
                              <td>$${exp.amount.toFixed(2)}</td>
-                             <td><button onclick="deleteExpense('${exp.id}')">Delete</button></td>`;
-        });
+                             <td><button onclick="deleteExpense('${exp.id}', '${exp.category}', ${exp.amount})">Delete</button></td>`;
 
-        expenseData.forEach(exp => updateBudgetTotals(exp.category, exp.date, exp.amount));
+            // Update budget totals
+            updateBudgetTotals(exp.category, exp.amount);
+        });
     });
 }
 
-// Function to update budget totals and apply color coding
-function updateBudgetTotals(category, expenseDate, amount) {
+// Delete an expense
+function deleteExpense(expenseId, category, amount) {
+    if (!expenseId) {
+        console.error("Invalid expense ID");
+        return;
+    }
+
+    remove(ref(db, `expenses/${expenseId}`))
+        .then(() => {
+            console.log("Expense deleted successfully");
+            loadExpenses(); // Reload expenses
+        })
+        .catch(error => console.error("Error deleting expense:", error));
+}
+
+// Reset all budget actuals to zero before recalculating
+function resetBudgetActuals() {
     let budgetTable = document.getElementById("budget-table");
     let rows = budgetTable.getElementsByTagName("tr");
 
-    let totalMonth = 0;
-    let totalWeek = 0;
+    for (let i = 1; i < rows.length; i++) {
+        rows[i].cells[3].textContent = "$0.00"; // Reset actual (month)
+        rows[i].cells[4].textContent = "$0.00"; // Reset actual (week)
+    }
+}
 
-    for (let i = 1; i < rows.length - 1; i++) { 
+// Update budget totals when adding or deleting expenses
+function updateBudgetTotals(category, amount) {
+    let budgetTable = document.getElementById("budget-table");
+    let rows = budgetTable.getElementsByTagName("tr");
+
+    for (let i = 1; i < rows.length; i++) {
         let row = rows[i];
         let rowCategory = row.cells[0].textContent;
 
@@ -181,28 +180,41 @@ function updateBudgetTotals(category, expenseDate, amount) {
             applyBudgetColors(actualMonthCell, currentMonthTotal + amount, parseFloat(row.cells[1].textContent.replace("$", "")));
             applyBudgetColors(actualWeekCell, currentWeekTotal + amount, parseFloat(row.cells[2].textContent.replace("$", "")));
         }
-
-        totalMonth += parseFloat(row.cells[3].textContent.replace("$", "")) || 0;
-        totalWeek += parseFloat(row.cells[4].textContent.replace("$", "")) || 0;
-    }
-
-    let totalRow = document.getElementById("total-discretionary-row");
-    if (totalRow) {
-        totalRow.cells[3].innerHTML = `<strong>$${totalMonth.toFixed(2)}</strong>`;
-        totalRow.cells[4].innerHTML = `<strong>$${totalWeek.toFixed(2)}</strong>`;
     }
 }
 
-// Function to apply color-coding based on budget status
+// Apply budget color coding
 function applyBudgetColors(cell, actual, budget) {
+    cell.classList.remove("over-budget", "near-budget", "under-budget");
+
     if (actual > budget) {
-        cell.style.backgroundColor = "red";
-        cell.style.color = "white";
+        cell.classList.add("over-budget"); // Red
     } else if (actual > budget * 0.75) {
-        cell.style.backgroundColor = "yellow";
-        cell.style.color = "black";
+        cell.classList.add("near-budget"); // Yellow
     } else {
-        cell.style.backgroundColor = "green";
-        cell.style.color = "white";
+        cell.classList.add("under-budget"); // Green
     }
+}
+
+// Populate filters for selecting month and year
+function populateFilters() {
+    let monthSelect = document.getElementById("filter-month");
+    let yearSelect = document.getElementById("filter-year");
+
+    if (!monthSelect || !yearSelect) {
+        console.error("Dropdowns not found.");
+        return;
+    }
+
+    let today = new Date();
+    let currentYear = today.getFullYear();
+    let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    monthSelect.innerHTML = months.map((month, index) =>
+        `<option value="${index + 1}" ${index + 1 === today.getMonth() + 1 ? 'selected' : ''}>${month}</option>`
+    ).join("");
+
+    yearSelect.innerHTML = [...Array(11)].map((_, i) =>
+        `<option value="${currentYear - i}">${currentYear - i}</option>`
+    ).join("");
 }
