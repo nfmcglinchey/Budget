@@ -10,27 +10,33 @@ h1, h2 {
     text-align: center;
 }
 
+/* Table Container: Enable Horizontal Scrolling */
+#budget-section, #expenses-section {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
 /* Table Styles */
 table {
     width: 100%;
+    min-width: 800px;
     border-collapse: collapse;
     margin: 10px 0;
-    table-layout: fixed; /* Ensures columns maintain a fixed width */
+    table-layout: fixed;
 }
 
-/* Table Cells: Ensure proper spacing and prevent text bleeding */
+/* Table Cells */
 th, td {
     border: 1px solid #ddd;
-    padding: 6px 8px; /* Adjusted padding for better fit */
+    padding: 6px 8px;
     text-align: left;
-    font-size: 12px; /* Reduced font size to prevent overflow */
-    height: 32px; /* Slightly taller rows */
+    font-size: 12px;
+    height: 32px;
     vertical-align: middle;
-    white-space: normal; /* Allow text wrapping */
-    word-wrap: break-word; /* Ensures words do not break mid-letter */
-    overflow-wrap: break-word; /* Ensures words do not break abruptly */
-    word-break: keep-all; /* Keeps whole words on one line if possible */
-    hyphens: none; /* Prevents unnecessary hyphenation */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Header row styling */
@@ -39,39 +45,13 @@ th {
     font-weight: bold;
 }
 
-/* Ensure consistent spacing between columns */
-th, td {
-    padding: 6px 8px;
-}
-
-/* Prevent words from breaking mid-line */
-th, td {
-    white-space: normal;
-    word-break: keep-all;
-    overflow-wrap: normal;
-}
-
-/* Category Column: Ensures text stays within its boundary */
-#budget-table th:nth-child(1),
-#budget-table td:nth-child(1) {
-    max-width: 180px; /* Increased column width */
-    min-width: 160px; /* Prevents it from getting too narrow */
-    position: sticky;
-    left: 0;
-    background: white;
-    z-index: 10;
-    font-weight: bold;
-    border-right: 2px solid #ddd;
-}
-
-/* Budget Columns: Prevent overlap */
+/* Ensure text does not wrap in numeric columns */
 th:nth-child(2), td:nth-child(2),  /* Monthly Budget */
 th:nth-child(3), td:nth-child(3),  /* Weekly Budget */
 th:nth-child(4), td:nth-child(4),  /* Actual (Month) */
 th:nth-child(5), td:nth-child(5) { /* Actual (Week) */
     text-align: center;
-    max-width: 100px; /* Wider columns to prevent number spillover */
-    min-width: 90px;
+    min-width: 100px;
 }
 
 /* Ensure the Description column has enough space */
@@ -79,6 +59,36 @@ th:nth-child(5), td:nth-child(5) { /* Actual (Week) */
 #expenses-table td:nth-child(3) {
     min-width: 200px;
     word-wrap: break-word;
+}
+
+/* Keep the 'Category' column fixed while scrolling */
+#budget-table th:nth-child(1),
+#budget-table td:nth-child(1),
+#expenses-table th:nth-child(2),
+#expenses-table td:nth-child(2) {
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 10;
+    font-weight: bold;
+    border-right: 2px solid #ddd;
+    min-width: 200px;
+    max-width: 220px;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+/* Budget Status Colors */
+.over-budget {
+    background-color: #ffb3b3 !important; /* Soft Red */
+}
+
+.near-budget {
+    background-color: #ffdf99 !important; /* Soft Yellow */
+}
+
+.under-budget {
+    background-color: #b3e6b3 !important; /* Soft Green */
 }
 
 /* Button Styles */
@@ -99,8 +109,6 @@ button:hover {
     background: #0056b3;
 }
 
-/* ---------- Mobile Layout Fixes & Fixed Category Column ---------- */
-
 /* Ensure the Add Expense section aligns labels to the left */
 #add-expense-section {
     display: flex;
@@ -118,24 +126,11 @@ button:hover {
 
 #expense-date,
 #expense-category,
-#expense-description,  /* Ensure Description input fits well */
+#expense-description,
 #expense-amount,
 button {
     width: 100%;
     max-width: 300px;
-}
-
-/* Make the tables scrollable for smaller screens */
-#budget-section, #expenses-section {
-    overflow-x: auto;
-    width: 100%;
-}
-
-/* Ensure the Category column remains fixed when scrolling */
-#budget-table, #expenses-table {
-    width: 100%;
-    border-collapse: collapse;
-    position: relative;
 }
 
 /* Fix first column (Category) to stay in place when scrolling */
@@ -151,37 +146,45 @@ button {
     border-right: 2px solid #ddd;
 }
 
-/* Improve mobile layout */
-@media screen and (max-width: 768px) {
-    table {
-        font-size: 11px; /* Slightly smaller text for better fit */
-    }
-
-    th, td {
-        padding: 5px 6px; /* Slightly reduce padding for smaller screens */
-        height: 30px;
-    }
-
-    th:nth-child(2), td:nth-child(2),
-    th:nth-child(3), td:nth-child(3),
-    th:nth-child(4), td:nth-child(4),
-    th:nth-child(5), td:nth-child(5) {
-        min-width: 80px; /* Prevents squeezing on mobile */
-    }
-
-    button {
-        width: 100%;
-    }
-
-    /* Allow table to scroll if it still overflows */
-    #budget-section {
-        overflow-x: auto;
-        width: 100%;
-    }
-}
-
 /* Ensure the Delete button doesn’t stretch */
 td button {
     width: auto;
     min-width: 70px;
+}
+
+/* Mobile Adjustments */
+@media screen and (max-width: 768px) {
+    /* Reduce font size and padding for smaller screens */
+    th, td {
+        font-size: 11px;
+        padding: 5px 6px;
+        height: 30px;
+    }
+
+    /* Ensure category column remains frozen and readable */
+    #budget-table th:nth-child(1),
+    #budget-table td:nth-child(1),
+    #expenses-table th:nth-child(2),
+    #expenses-table td:nth-child(2) {
+        min-width: 180px;
+        max-width: 200px;
+    }
+
+    /* Reduce numeric column width */
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5) {
+        min-width: 80px;
+    }
+
+    /* Allow table to scroll horizontally */
+    #budget-section, #expenses-section {
+        overflow-x: auto;
+    }
+
+    /* Make buttons take full width */
+    button {
+        width: 100%;
+    }
 }
