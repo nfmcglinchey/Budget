@@ -1,46 +1,68 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, off, remove } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyA6ZFSK7jPIkiEv47yl8q-O1jh8DNvOsiI",
+  authDomain: "budget-data-b9bcc.firebaseapp.com",
+  databaseURL: "https://budget-data-b9bcc-default-rtdb.firebaseio.com",
+  projectId: "budget-data-b9bcc",
+  storageBucket: "budget-data-b9bcc.appspot.com",
+  messagingSenderId: "798831217373",
+  appId: "1:798831217373:web:0d011f497ad3b9ca85a934"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let expensesListener = null; // To manage the Firebase listener
+
 document.addEventListener("DOMContentLoaded", function () {
   setTimeout(setDefaultDate, 500);
   loadBudget();
   populateFilters(); // Populate month/year dropdowns first
 
-  setTimeout(() => {
-    loadExpenses(); // Ensure expenses load AFTER default values are set
-  }, 100); // Slight delay to allow dropdowns to populate
+  // Attach event listener for the Add Expense button
+  document.getElementById("add-expense-button").addEventListener("click", addExpense);
+
+  // Attach event listeners for filter changes
+  document.getElementById("filter-month").addEventListener("change", loadExpenses);
+  document.getElementById("filter-year").addEventListener("change", loadExpenses);
 });
 
-// Auto-populate today's date
+// Auto-populate today's date using ISO format (yyyy-mm-dd)
 function setDefaultDate() {
-  let dateInput = document.getElementById("expense-date");
+  const dateInput = document.getElementById("expense-date");
   if (!dateInput) {
     console.error("Date input field not found.");
     return;
   }
-  let today = new Date();
-  dateInput.value = today.toLocaleDateString('en-CA');
+  const today = new Date();
+  dateInput.value = today.toISOString().slice(0, 10);
 }
 
-// Format date from YYYY-MM-DD to MM/DD/YYYY
+// Format date from "YYYY-MM-DD" to "MM/DD/YYYY"
 function formatDate(isoDate) {
-  let [year, month, day] = isoDate.split("-");
+  const [year, month, day] = isoDate.split("-");
   return `${month}/${day}/${year}`;
 }
 
-// Parse a date string in local time (YYYY-MM-DD)
+// Parse "YYYY-MM-DD" as a local date
 function parseLocalDate(dateString) {
   const [year, month, day] = dateString.split('-').map(Number);
   return new Date(year, month - 1, day);
 }
 
 function loadBudget() {
-  let budgetTable = document.getElementById("budget-table");
-  let categoryDropdown = document.getElementById("expense-category");
+  const budgetTable = document.getElementById("budget-table");
+  const categoryDropdown = document.getElementById("expense-category");
 
   if (!budgetTable || !categoryDropdown) {
     console.error("Budget table or category dropdown not found");
     return;
   }
 
-  let budget = [
+  const budget = [
     { name: "Groceries", monthly: 1200 },
     { name: "Dining Out", monthly: 400 },
     { name: "Entertainment", monthly: 200 },
@@ -61,26 +83,29 @@ function loadBudget() {
   let totalMonthly = 0;
   let totalWeekly = 0;
 
+  // Clear category dropdown before populating
+  categoryDropdown.innerHTML = "";
+
   budget.forEach(category => {
-    let weeklyBudget = (category.monthly * 12 / 52).toFixed(2);
+    const weeklyBudget = (category.monthly * 12 / 52).toFixed(2);
     totalMonthly += category.monthly;
     totalWeekly += parseFloat(weeklyBudget);
 
-    let row = budgetTable.insertRow();
+    const row = budgetTable.insertRow();
     row.innerHTML = `<td>${category.name}</td>
                      <td>$${category.monthly.toFixed(2)}</td>
                      <td>$${weeklyBudget}</td>
                      <td class="actual-month">$0.00</td>
                      <td class="actual-week">$0.00</td>`;
 
-    let option = document.createElement("option");
+    const option = document.createElement("option");
     option.value = category.name;
     option.textContent = category.name;
     categoryDropdown.appendChild(option);
   });
 
   // Insert Total Row at the Bottom
-  let totalRow = budgetTable.insertRow();
+  const totalRow = budgetTable.insertRow();
   totalRow.innerHTML = `<td><strong>Total</strong></td>
                         <td><strong>$${totalMonthly.toFixed(2)}</strong></td>
                         <td><strong>$${totalWeekly.toFixed(2)}</strong></td>
@@ -91,92 +116,129 @@ function loadBudget() {
 
 // Add a new expense
 function addExpense() {
-  let date = document.getElementById("expense-date")?.value;
-  let category = document.getElementById("expense-category")?.value;
-  let description = document.getElementById("expense-description")?.value.trim();
-  let amount = parseFloat(document.getElementById("expense-amount")?.value);
+  const date = document.getElementById("expense-date")?.value;
+  const category = document.getElementById("expense-category")?.value;
+  const description = document.getElementById("expense-description")?.value.trim();
+  const amount = parseFloat(document.getElementById("expense-amount")?.value);
 
   if (!date || !category || isNaN(amount) || amount <= 0) {
     alert("Please fill out all fields with valid data.");
     return;
   }
 
-  let newExpense = { date, category, description, amount };
+  const newExpense = { date, category, description, amount };
 
   push(ref(db, "expenses"), newExpense)
     .then(() => {
       console.log("Expense added successfully");
-      loadExpenses();
+      // The live listener updates the UI.
     })
     .catch(error => console.error("Error adding expense:", error));
 }
 
 // Load expenses and update the budget
 function loadExpenses() {
-  let expensesTable = document.getElementById("expenses-table");
-  let selectedMonth = document.getElementById("filter-month")?.value;
-  let selectedYear = document.getElementById("filter-year")?.value;
-
+  const expensesTable = document.getElementById("expenses-table");
   if (!expensesTable) {
     console.error("Expenses table not found");
     return;
   }
 
-  // Clear the table before loading new data (retain header row)
+  // Clear the table header
   expensesTable.innerHTML = `<tr>
-                              <th>Date</th>
-                              <th>Category</th>
-                              <th>Description</th>
-                              <th>Amount</th>
-                              <th>Action</th>
-                            </tr>`;
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Action</th>
+                              </tr>`;
 
   const expensesRef = ref(db, "expenses");
 
-  // Reset budget actuals before recalculating
-  resetBudgetActuals();
-
   // Calculate current week boundaries (Friday as first day)
-  let today = new Date();
+  const today = new Date();
   today.setHours(0, 0, 0, 0);
-  let diff = (today.getDay() - 5 + 7) % 7;
-  let startOfWeek = new Date(today);
+  const diff = (today.getDay() - 5 + 7) % 7;
+  const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - diff);
-  let endOfWeek = new Date(startOfWeek);
+  const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-  console.log("Start of week:", startOfWeek);
-  console.log("End of week:", endOfWeek);
+  // Detach previous listener if it exists
+  if (expensesListener) {
+    off(expensesRef, "value", expensesListener);
+  }
 
-  onValue(expensesRef, (snapshot) => {
-    // Process each expense in the snapshot
-    snapshot.forEach((childSnapshot) => {
-      let expense = childSnapshot.val();
-      // Parse expense date using local time
-      let expenseDate = parseLocalDate(expense.date);
-      let expenseMonth = (expenseDate.getMonth() + 1).toString();
-      let expenseYear = expenseDate.getFullYear().toString();
+  // Define and attach the new listener
+  expensesListener = function(snapshot) {
+    // Reset totals at the start of each snapshot update
+    resetBudgetActuals();
+
+    // Re-read filter values for updated filtering
+    const selectedMonth = document.getElementById("filter-month")?.value;
+    const selectedYear = document.getElementById("filter-year")?.value;
+
+    // Clear table except header row
+    expensesTable.innerHTML = `<tr>
+                                  <th>Date</th>
+                                  <th>Category</th>
+                                  <th>Description</th>
+                                  <th>Amount</th>
+                                  <th>Action</th>
+                                </tr>`;
+
+    snapshot.forEach(childSnapshot => {
+      const expense = childSnapshot.val();
+      const expenseDate = parseLocalDate(expense.date);
+      const expenseMonth = (expenseDate.getMonth() + 1).toString();
+      const expenseYear = expenseDate.getFullYear().toString();
 
       // If expense matches the selected month/year, add to table and update monthly totals
       if (expenseMonth === selectedMonth && expenseYear === selectedYear) {
-        let formattedDate = formatDate(expense.date);
-        let row = expensesTable.insertRow();
-        row.innerHTML = `<td>${formattedDate}</td>
-                         <td>${expense.category}</td>
-                         <td>${expense.description || "—"}</td>
-                         <td>$${expense.amount.toFixed(2)}</td>
-                         <td><button onclick="deleteExpense('${childSnapshot.key}', '${expense.category}', ${expense.amount})">Delete</button></td>`;
+        const formattedDate = formatDate(expense.date);
+        const row = document.createElement("tr");
 
+        const dateCell = document.createElement("td");
+        dateCell.textContent = formattedDate;
+        row.appendChild(dateCell);
+
+        const categoryCell = document.createElement("td");
+        categoryCell.textContent = expense.category;
+        row.appendChild(categoryCell);
+
+        const descCell = document.createElement("td");
+        descCell.textContent = expense.description || "—";
+        row.appendChild(descCell);
+
+        const amountCell = document.createElement("td");
+        amountCell.textContent = `$${expense.amount.toFixed(2)}`;
+        row.appendChild(amountCell);
+
+        const actionCell = document.createElement("td");
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.addEventListener("click", function () {
+          deleteExpense(childSnapshot.key, expense.category, expense.amount);
+        });
+        actionCell.appendChild(deleteBtn);
+        row.appendChild(actionCell);
+
+        expensesTable.appendChild(row);
+
+        // Update monthly totals for this category
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "month");
       }
-      // Update weekly totals if the expense falls within the current week
+
+      // Independently update weekly totals if within the current week
       if (expenseDate >= startOfWeek && expenseDate < endOfWeek) {
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "week");
       }
     });
-    // Update Total Row after processing all expenses
+    // Update the final total row after processing all expenses
     updateTotalRow();
-  });
+  };
+
+  onValue(expensesRef, expensesListener);
 }
 
 // Delete an expense
@@ -189,15 +251,15 @@ function deleteExpense(expenseId, category, amount) {
   remove(ref(db, `expenses/${expenseId}`))
     .then(() => {
       console.log("Expense deleted successfully");
-      loadExpenses();
+      // The live listener updates the UI.
     })
     .catch(error => console.error("Error deleting expense:", error));
 }
 
 // Reset all budget actuals to zero before recalculating
 function resetBudgetActuals() {
-  let budgetTable = document.getElementById("budget-table");
-  let rows = budgetTable.getElementsByTagName("tr");
+  const budgetTable = document.getElementById("budget-table");
+  const rows = budgetTable.getElementsByTagName("tr");
 
   for (let i = 1; i < rows.length; i++) {
     rows[i].cells[3].textContent = "$0.00"; // Reset Actual (Month)
@@ -205,29 +267,37 @@ function resetBudgetActuals() {
   }
 }
 
-// Update budget totals for either month or week based on the 'type' parameter
+// Update budget totals for either month or week
 function updateBudgetTotals(category, amount, expenseDate, type) {
-  let budgetTable = document.getElementById("budget-table");
-  let rows = budgetTable.getElementsByTagName("tr");
+  const budgetTable = document.getElementById("budget-table");
+  const rows = budgetTable.getElementsByTagName("tr");
 
   // Loop through budget rows (excluding header and Total row)
   for (let i = 1; i < rows.length - 1; i++) {
-    let row = rows[i];
-    let rowCategory = row.cells[0].textContent;
+    const row = rows[i];
+    const rowCategory = row.cells[0].textContent;
 
     if (rowCategory === category) {
       if (type === "month") {
-        let actualMonthCell = row.cells[3];
-        let currentMonthTotal = parseFloat(actualMonthCell.textContent.replace("$", "")) || 0;
-        let newMonthTotal = currentMonthTotal + amount;
+        const actualMonthCell = row.cells[3];
+        const currentMonthTotal = parseFloat(actualMonthCell.textContent.replace("$", "")) || 0;
+        const newMonthTotal = currentMonthTotal + amount;
         actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
-        applyBudgetColors(actualMonthCell, newMonthTotal, parseFloat(row.cells[1].textContent.replace("$", "")));
+        applyBudgetColors(
+          actualMonthCell,
+          newMonthTotal,
+          parseFloat(row.cells[1].textContent.replace("$", ""))
+        );
       } else if (type === "week") {
-        let actualWeekCell = row.cells[4];
-        let currentWeekTotal = parseFloat(actualWeekCell.textContent.replace("$", "")) || 0;
-        let newWeekTotal = currentWeekTotal + amount;
+        const actualWeekCell = row.cells[4];
+        const currentWeekTotal = parseFloat(actualWeekCell.textContent.replace("$", "")) || 0;
+        const newWeekTotal = currentWeekTotal + amount;
         actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
-        applyBudgetColors(actualWeekCell, newWeekTotal, parseFloat(row.cells[2].textContent.replace("$", "")));
+        applyBudgetColors(
+          actualWeekCell,
+          newWeekTotal,
+          parseFloat(row.cells[2].textContent.replace("$", ""))
+        );
       }
     }
   }
@@ -235,8 +305,8 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
 
 // Recalculate and update the total row for monthly and weekly actuals
 function updateTotalRow() {
-  let budgetTable = document.getElementById("budget-table");
-  let rows = budgetTable.getElementsByTagName("tr");
+  const budgetTable = document.getElementById("budget-table");
+  const rows = budgetTable.getElementsByTagName("tr");
   let totalMonthActual = 0;
   let totalWeekActual = 0;
 
@@ -247,7 +317,7 @@ function updateTotalRow() {
   }
 
   // Update Total Row
-  let totalRow = rows[rows.length - 1];
+  const totalRow = rows[rows.length - 1];
   totalRow.cells[3].innerHTML = `<strong>$${totalMonthActual.toFixed(2)}</strong>`;
   totalRow.cells[4].innerHTML = `<strong>$${totalWeekActual.toFixed(2)}</strong>`;
 }
@@ -267,35 +337,40 @@ function applyBudgetColors(cell, actual, budget) {
 
 // Populate filters for selecting month and year
 function populateFilters() {
-  let monthSelect = document.getElementById("filter-month");
-  let yearSelect = document.getElementById("filter-year");
+  const monthSelect = document.getElementById("filter-month");
+  const yearSelect = document.getElementById("filter-year");
 
   if (!monthSelect || !yearSelect) {
     console.error("Dropdowns not found.");
     return;
   }
 
-  let today = new Date();
-  let currentMonth = today.getMonth() + 1;
-  let currentYear = today.getFullYear();
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
 
-  let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
 
+  // Populate month dropdown
   monthSelect.innerHTML = months
-    .map((month, index) =>
-      `<option value="${index + 1}" ${index + 1 === currentMonth ? 'selected' : ''}>${month}</option>`
-    )
+    .map((month, index) => {
+      const isSelected = (index + 1 === currentMonth) ? 'selected' : '';
+      return `<option value="${index + 1}" ${isSelected}>${month}</option>`;
+    })
     .join("");
 
+  // Populate year dropdown (past 10 years + current year)
   yearSelect.innerHTML = [...Array(11)]
-    .map((_, i) =>
-      `<option value="${currentYear - i}" ${currentYear === (currentYear - i) ? 'selected' : ''}>${currentYear - i}</option>`
-    )
+    .map((_, i) => {
+      const year = currentYear - i;
+      const isSelected = (year === currentYear) ? 'selected' : '';
+      return `<option value="${year}" ${isSelected}>${year}</option>`;
+    })
     .join("");
 
   // Load expenses after setting filters
   loadExpenses();
 }
-
-document.getElementById("filter-month").addEventListener("change", loadExpenses);
-document.getElementById("filter-year").addEventListener("change", loadExpenses);
