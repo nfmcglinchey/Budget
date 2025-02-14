@@ -16,7 +16,7 @@ function setDefaultDate() {
     return;
   }
   let today = new Date();
-  dateInput.value = today.toISOString().split('T')[0];
+  dateInput.value = today.toLocaleDateString('en-CA');
 }
 
 // Format date from YYYY-MM-DD to MM/DD/YYYY
@@ -111,6 +111,7 @@ function addExpense() {
     .catch(error => console.error("Error adding expense:", error));
 }
 
+// Load expenses and update the budget
 function loadExpenses() {
   let expensesTable = document.getElementById("expenses-table");
   let selectedMonth = document.getElementById("filter-month")?.value;
@@ -151,13 +152,10 @@ function loadExpenses() {
     // Process each expense in the snapshot
     snapshot.forEach((childSnapshot) => {
       let expense = childSnapshot.val();
-      // Use local time parsing for the expense date
+      // Parse expense date using local time
       let expenseDate = parseLocalDate(expense.date);
       let expenseMonth = (expenseDate.getMonth() + 1).toString();
       let expenseYear = expenseDate.getFullYear().toString();
-
-      // Log the dates for debugging
-      console.log("Expense Date:", expenseDate, "Selected Month:", selectedMonth, "Selected Year:", selectedYear);
 
       // If expense matches the selected month/year, add to table and update monthly totals
       if (expenseMonth === selectedMonth && expenseYear === selectedYear) {
@@ -171,10 +169,6 @@ function loadExpenses() {
 
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "month");
       }
-
-      // Log the weekly comparison values for debugging
-      console.log("Comparing expense date:", expenseDate, "with start:", startOfWeek, "and end:", endOfWeek);
-
       // Update weekly totals if the expense falls within the current week
       if (expenseDate >= startOfWeek && expenseDate < endOfWeek) {
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "week");
@@ -285,20 +279,17 @@ function populateFilters() {
   let currentMonth = today.getMonth() + 1;
   let currentYear = today.getFullYear();
 
-  let months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   monthSelect.innerHTML = months
     .map((month, index) =>
-      `<option value="${index + 1}" ${index + 1 === currentMonth ? "selected" : ""}>${month}</option>`
+      `<option value="${index + 1}" ${index + 1 === currentMonth ? 'selected' : ''}>${month}</option>`
     )
     .join("");
 
   yearSelect.innerHTML = [...Array(11)]
-    .map(
-      (_, i) => `<option value="${currentYear - i}" ${currentYear === currentYear - i ? "selected" : ""}>${currentYear - i}</option>`
+    .map((_, i) =>
+      `<option value="${currentYear - i}" ${currentYear === (currentYear - i) ? 'selected' : ''}>${currentYear - i}</option>`
     )
     .join("");
 
