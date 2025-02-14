@@ -96,12 +96,13 @@
       loadBudget();
       populateFilters(); // Populate month/year dropdowns first
 
+      // Slight delay to ensure dropdowns are populated before loading expenses
       setTimeout(() => {
-        loadExpenses(); // Ensure expenses load AFTER default values are set
-      }, 100); // Slight delay to allow dropdowns to populate
+        loadExpenses();
+      }, 100);
     });
 
-    // Auto-populate today's date
+    // Auto-populate today's date using local time
     function setDefaultDate() {
       let dateInput = document.getElementById("expense-date");
       if (!dateInput) {
@@ -109,13 +110,21 @@
         return;
       }
       let today = new Date();
-      dateInput.value = today.toISOString().split('T')[0];
+      // en-CA format = yyyy-mm-dd in local time
+      dateInput.value = today.toLocaleDateString('en-CA');
     }
 
-    // Format date from YYYY-MM-DD to MM/DD/YYYY
+    // Format date from "YYYY-MM-DD" to "MM/DD/YYYY"
     function formatDate(isoDate) {
       let [year, month, day] = isoDate.split("-");
       return `${month}/${day}/${year}`;
+    }
+
+    // Helper: parse "YYYY-MM-DD" as a local date, rather than UTC
+    function parseLocalDate(dateString) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      // Note that month is zero-based in JS: 0=January, 1=February, etc.
+      return new Date(year, month - 1, day);
     }
 
     function loadBudget() {
@@ -228,7 +237,7 @@
       // Calculate current week boundaries (Friday as first day)
       let today = new Date();
       today.setHours(0, 0, 0, 0);
-      let diff = (today.getDay() - 5 + 7) % 7;
+      let diff = (today.getDay() - 5 + 7) % 7; // If Friday = 5, shift
       let startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - diff);
       let endOfWeek = new Date(startOfWeek);
@@ -242,7 +251,9 @@
           // Process each expense in the snapshot
           snapshot.forEach((childSnapshot) => {
             let expense = childSnapshot.val();
-            let expenseDate = new Date(expense.date);
+
+            // Parse the stored YYYY-MM-DD date in local time
+            let expenseDate = parseLocalDate(expense.date);
             let expenseMonth = (expenseDate.getMonth() + 1).toString();
             let expenseYear = expenseDate.getFullYear().toString();
 
@@ -254,16 +265,22 @@
                                <td>${expense.category}</td>
                                <td>${expense.description || "—"}</td>
                                <td>$${expense.amount.toFixed(2)}</td>
-                               <td><button onclick="deleteExpense('${childSnapshot.key}', '${expense.category}', ${expense.amount})">Delete</button></td>`;
+                               <td>
+                                 <button onclick="deleteExpense('${childSnapshot.key}', '${expense.category}', ${expense.amount})">
+                                   Delete
+                                 </button>
+                               </td>`;
 
+              // Update the monthly totals for this category
               updateBudgetTotals(expense.category, expense.amount, expenseDate, "month");
             }
-            // Regardless of the filter, update weekly totals if the expense falls within the current week
+
+            // Independently, if expense is in the current week, update weekly totals
             if (expenseDate >= startOfWeek && expenseDate < endOfWeek) {
               updateBudgetTotals(expense.category, expense.amount, expenseDate, "week");
             }
           });
-          // Update Total Row after processing all expenses
+          // Update the final total row after processing all expenses
           updateTotalRow();
         });
       }
@@ -295,7 +312,7 @@
       }
     }
 
-    // Update budget totals for either month or week based on the 'type' parameter
+    // Update budget totals for either month or week
     function updateBudgetTotals(category, amount, expenseDate, type) {
       let budgetTable = document.getElementById("budget-table");
       let rows = budgetTable.getElementsByTagName("tr");
@@ -311,13 +328,21 @@
             let currentMonthTotal = parseFloat(actualMonthCell.textContent.replace("$", "")) || 0;
             let newMonthTotal = currentMonthTotal + amount;
             actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
-            applyBudgetColors(actualMonthCell, newMonthTotal, parseFloat(row.cells[1].textContent.replace("$", "")));
+            applyBudgetColors(
+              actualMonthCell,
+              newMonthTotal,
+              parseFloat(row.cells[1].textContent.replace("$", ""))
+            );
           } else if (type === "week") {
             let actualWeekCell = row.cells[4];
             let currentWeekTotal = parseFloat(actualWeekCell.textContent.replace("$", "")) || 0;
             let newWeekTotal = currentWeekTotal + amount;
             actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
-            applyBudgetColors(actualWeekCell, newWeekTotal, parseFloat(row.cells[2].textContent.replace("$", "")));
+            applyBudgetColors(
+              actualWeekCell,
+              newWeekTotal,
+              parseFloat(row.cells[2].textContent.replace("$", ""))
+            );
           }
         }
       }
@@ -369,18 +394,26 @@
       let currentMonth = today.getMonth() + 1;
       let currentYear = today.getFullYear();
 
-      let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      let months = [
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+      ];
 
+      // Populate month dropdown
       monthSelect.innerHTML = months
-        .map((month, index) =>
-          `<option value="${index + 1}" ${index + 1 === currentMonth ? 'selected' : ''}>${month}</option>`
-        )
+        .map((month, index) => {
+          let isSelected = (index + 1 === currentMonth) ? 'selected' : '';
+          return `<option value="${index + 1}" ${isSelected}>${month}</option>`;
+        })
         .join("");
 
+      // Populate year dropdown (past 10 years + current year)
       yearSelect.innerHTML = [...Array(11)]
-        .map((_, i) =>
-          `<option value="${currentYear - i}" ${currentYear === (currentYear - i) ? 'selected' : ''}>${currentYear - i}</option>`
-        )
+        .map((_, i) => {
+          let year = currentYear - i;
+          let isSelected = (year === currentYear) ? 'selected' : '';
+          return `<option value="${year}" ${isSelected}>${year}</option>`;
+        })
         .join("");
 
       // Load expenses after setting filters
