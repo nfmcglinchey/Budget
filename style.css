@@ -188,3 +188,9 @@ td button {
         width: 100%;
     }
 }
+
+.total-row {
+    font-weight: bold;
+    background-color: #f0f0f0;
+}
+
