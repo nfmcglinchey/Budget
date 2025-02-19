@@ -1,20 +1,69 @@
 /* General Styles */
 body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
     padding: 20px;
+    background-color: #f9f9f9;
+    color: #333;
 }
 
-/* Center headings */
+/* Headings */
 h1, h2 {
     text-align: center;
+    color: #222;
+}
+
+/* Card containers for sections */
+.card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 20px auto;
+    padding: 20px;
+    max-width: 960px;
+}
+
+/* Filters styling */
+.filters {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* Form group styling */
+.form-group {
+    margin: 10px auto;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Inputs and buttons */
+input, select, button {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Button styles */
+button {
+    background-color: #007bff;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    border: none;
+    margin-top: 10px;
+}
+button:hover {
+    background-color: #0056b3;
 }
 
 /* Table Container: Enable Horizontal Scrolling */
 #budget-section, #expenses-section {
-    width: 100%;
     overflow-x: auto;
-    white-space: nowrap;
 }
 
 /* Table Styles */
@@ -23,174 +72,81 @@ table {
     min-width: 800px;
     border-collapse: collapse;
     margin: 10px 0;
-    table-layout: fixed;
 }
 
 /* Table Cells */
 th, td {
     border: 1px solid #ddd;
-    padding: 6px 8px;
+    padding: 10px 12px;
     text-align: left;
-    font-size: 12px;
-    height: 32px;
+    font-size: 14px;
     vertical-align: middle;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 /* Header row styling */
 th {
-    background-color: #f4f4f4;
-    font-weight: bold;
+    background-color: #f1f1f1;
+    font-weight: 500;
 }
 
-/* Ensure text does not wrap in numeric columns */
-th:nth-child(2), td:nth-child(2),  /* Monthly Budget */
-th:nth-child(3), td:nth-child(3),  /* Weekly Budget */
-th:nth-child(4), td:nth-child(4),  /* Actual (Month) */
-th:nth-child(5), td:nth-child(5) { /* Actual (Week) */
+/* Center numeric columns */
+th:nth-child(2), td:nth-child(2),
+th:nth-child(3), td:nth-child(3),
+th:nth-child(4), td:nth-child(4),
+th:nth-child(5), td:nth-child(5) {
     text-align: center;
-    min-width: 100px;
 }
 
-/* Ensure the Description column has enough space */
-#expenses-table th:nth-child(3), 
-#expenses-table td:nth-child(3) {
-    min-width: 200px;
-    word-wrap: break-word;
-}
-
-/* Keep the 'Category' column fixed while scrolling */
+/* Sticky Category Column */
 #budget-table th:nth-child(1),
 #budget-table td:nth-child(1),
 #expenses-table th:nth-child(2),
 #expenses-table td:nth-child(2) {
     position: sticky;
     left: 0;
-    background: white;
-    z-index: 10;
-    font-weight: bold;
+    background: #fff;
+    z-index: 2;
+    font-weight: 600;
     border-right: 2px solid #ddd;
-    min-width: 200px;
-    max-width: 220px;
-    white-space: normal;
-    word-wrap: break-word;
+}
+
+/* Hover effect on table rows */
+tr:hover {
+    background-color: #f8f8f8;
 }
 
 /* Budget Status Colors */
 .over-budget {
-    background-color: #ffb3b3 !important; /* Soft Red */
+    background-color: #ffcccc !important;
 }
-
 .near-budget {
-    background-color: #ffdf99 !important; /* Soft Yellow */
+    background-color: #fff3cc !important;
 }
-
 .under-budget {
-    background-color: #b3e6b3 !important; /* Soft Green */
-}
-
-/* Button Styles */
-button {
-    display: block;
-    margin: 5px auto;
-    padding: 6px 10px;
-    background: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    height: 32px;
-}
-
-/* Hover effect for buttons */
-button:hover {
-    background: #0056b3;
-}
-
-/* Ensure the Add Expense section aligns labels to the left */
-#add-expense-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-}
-
-#add-expense-section label {
-    display: block;
-    width: 100%;
-    text-align: left;
-    margin-top: 5px;
-}
-
-#expense-date,
-#expense-category,
-#expense-description,
-#expense-amount,
-button {
-    width: 100%;
-    max-width: 300px;
-}
-
-/* Fix first column (Category) to stay in place when scrolling */
-#budget-table th:nth-child(1),
-#budget-table td:nth-child(1),
-#expenses-table th:nth-child(2),
-#expenses-table td:nth-child(2) {
-    position: sticky;
-    left: 0;
-    background: white;
-    z-index: 10;
-    font-weight: bold;
-    border-right: 2px solid #ddd;
-}
-
-/* Ensure the Delete button doesn’t stretch */
-td button {
-    width: auto;
-    min-width: 70px;
+    background-color: #ccffcc !important;
 }
 
 /* Mobile Adjustments */
 @media screen and (max-width: 768px) {
-    /* Reduce font size and padding for smaller screens */
     th, td {
-        font-size: 11px;
-        padding: 5px 6px;
-        height: 30px;
+        font-size: 13px;
+        padding: 8px 10px;
     }
-
-    /* Ensure category column remains frozen and readable */
     #budget-table th:nth-child(1),
     #budget-table td:nth-child(1),
     #expenses-table th:nth-child(2),
     #expenses-table td:nth-child(2) {
-        min-width: 180px;
-        max-width: 200px;
+        min-width: 160px;
+        max-width: 180px;
     }
-
-    /* Reduce numeric column width */
-    th:nth-child(2), td:nth-child(2),
-    th:nth-child(3), td:nth-child(3),
-    th:nth-child(4), td:nth-child(4),
-    th:nth-child(5), td:nth-child(5) {
-        min-width: 80px;
+    table {
+        min-width: 100%;
     }
-
-    /* Allow table to scroll horizontally */
-    #budget-section, #expenses-section {
-        overflow-x: auto;
-    }
-
-    /* Make buttons take full width */
     button {
         width: 100%;
     }
 }
-
 .total-row {
     font-weight: bold;
     background-color: #f0f0f0;
 }
-
