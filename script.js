@@ -1,5 +1,3 @@
-// Remove all ES module import statements and use the global firebase object
-
 // Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA6ZFSK7jPIkiEv47yl8q-O1jh8DNvOsiI",
@@ -11,20 +9,17 @@ const firebaseConfig = {
   appId: "1:798831217373:web:0d011f497ad3b9ca85a934"
 };
 
-// Initialize Firebase (older namespace approach)
+// Initialize Firebase (using compat libraries)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let expensesListener = null;
 
-// Wait for DOM to load
 document.addEventListener("DOMContentLoaded", function () {
-  // Delay setting default date to ensure the element exists
+  // Delay setting the default date to ensure the element exists
   setTimeout(setDefaultDate, 500);
   loadBudget();
   populateFilters();
-
-  // Attach event handlers
   document.getElementById("add-expense-button").addEventListener("click", addExpense);
   document.getElementById("filter-month").addEventListener("change", loadExpenses);
   document.getElementById("filter-year").addEventListener("change", loadExpenses);
@@ -37,23 +32,20 @@ function setDefaultDate() {
     return;
   }
   const today = new Date();
-  // Format as yyyy-mm-dd
+  // Set date to today's date in yyyy-mm-dd format
   dateInput.value = today.toISOString().slice(0, 10);
 }
 
-// Convert "YYYY-MM-DD" to "MM/DD/YYYY"
 function formatDate(isoDate) {
   const [year, month, day] = isoDate.split("-");
   return `${month}/${day}/${year}`;
 }
 
-// Convert "YYYY-MM-DD" to a JS Date
 function parseLocalDate(dateString) {
   const [year, month, day] = dateString.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
-// Build the Budget table and category dropdown
 function loadBudget() {
   const budgetTable = document.getElementById("budget-table");
   const categoryDropdown = document.getElementById("expense-category");
@@ -87,10 +79,9 @@ function loadBudget() {
   let totalMonthly = 0;
   let totalWeekly = 0;
 
-  // Clear dropdown
+  // Clear the category dropdown
   categoryDropdown.innerHTML = "";
 
-  // Fill table rows
   budget.forEach(category => {
     const weeklyBudget = (category.monthly * 12 / 52).toFixed(2);
     totalMonthly += category.monthly;
@@ -105,7 +96,7 @@ function loadBudget() {
       <td class="actual-week">$0.00</td>
     `;
 
-    // Populate dropdown
+    // Populate the dropdown with the category
     const option = document.createElement("option");
     option.value = category.name;
     option.textContent = category.name;
@@ -124,7 +115,6 @@ function loadBudget() {
   totalRow.classList.add("total-row");
 }
 
-// Add a new expense to Firebase
 function addExpense() {
   const date = document.getElementById("expense-date")?.value;
   const category = document.getElementById("expense-category")?.value;
@@ -138,13 +128,19 @@ function addExpense() {
 
   const newExpense = { date, category, description, amount };
 
-  // Push to "expenses" in the database
   db.ref("expenses").push(newExpense)
-    .then(() => console.log("Expense added successfully"))
+    .then(() => {
+      console.log("Expense added successfully");
+      // Clear the Add Expense fields:
+      // Set default date so today's date is populated
+      setDefaultDate();
+      document.getElementById("expense-category").selectedIndex = 0;
+      document.getElementById("expense-description").value = "";
+      document.getElementById("expense-amount").value = "";
+    })
     .catch(error => console.error("Error adding expense:", error));
 }
 
-// Load expenses from Firebase and filter them
 function loadExpenses() {
   const expensesTable = document.getElementById("expenses-table");
   if (!expensesTable) {
@@ -152,7 +148,7 @@ function loadExpenses() {
     return;
   }
 
-  // Reset table (keep the header)
+  // Reset the table header
   expensesTable.innerHTML = `
     <tr>
       <th>Date</th>
@@ -163,7 +159,7 @@ function loadExpenses() {
     </tr>
   `;
 
-  // Calculate the current Friday-based week range
+  // Calculate the current week boundaries (Fri-Thu)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = (today.getDay() - 5 + 7) % 7;
@@ -172,16 +168,13 @@ function loadExpenses() {
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-  // Remove old listener if any
+  // Remove previous listener if it exists
   if (expensesListener) {
     db.ref("expenses").off("value", expensesListener);
   }
 
-  // Define a new listener
   expensesListener = (snapshot) => {
-    // Reset the monthly/weekly actual columns
     resetBudgetActuals();
-
     const selectedMonth = document.getElementById("filter-month")?.value;
     const selectedYear = document.getElementById("filter-year")?.value;
 
@@ -202,32 +195,27 @@ function loadExpenses() {
       const expenseMonth = (expenseDate.getMonth() + 1).toString();
       const expenseYear = expenseDate.getFullYear().toString();
 
-      // If it matches the selected month/year, display in table
+      // Only display expenses matching the selected month/year
       if (expenseMonth === selectedMonth && expenseYear === selectedYear) {
         const formattedDate = formatDate(expense.date);
         const row = document.createElement("tr");
 
-        // Date cell
         const dateCell = document.createElement("td");
         dateCell.textContent = formattedDate;
         row.appendChild(dateCell);
 
-        // Category cell
         const categoryCell = document.createElement("td");
         categoryCell.textContent = expense.category;
         row.appendChild(categoryCell);
 
-        // Description cell
         const descCell = document.createElement("td");
         descCell.textContent = expense.description || "—";
         row.appendChild(descCell);
 
-        // Amount cell
         const amountCell = document.createElement("td");
         amountCell.textContent = `$${expense.amount.toFixed(2)}`;
         row.appendChild(amountCell);
 
-        // Action cell (delete button)
         const actionCell = document.createElement("td");
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "Delete";
@@ -239,25 +227,22 @@ function loadExpenses() {
 
         expensesTable.appendChild(row);
 
-        // Update monthly totals
+        // Update monthly totals for this expense
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "month");
       }
 
-      // Independently update weekly totals if within current Fri-Thu week
+      // Update weekly totals if the expense falls within the current week
       if (expenseDate >= startOfWeek && expenseDate < endOfWeek) {
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "week");
       }
     });
 
-    // Update total row after processing
     updateTotalRow();
   };
 
-  // Attach the listener
   db.ref("expenses").on("value", expensesListener);
 }
 
-// Delete an expense by ID
 function deleteExpense(expenseId) {
   if (!expenseId) {
     console.error("Invalid expense ID");
@@ -268,7 +253,6 @@ function deleteExpense(expenseId) {
     .catch(error => console.error("Error deleting expense:", error));
 }
 
-// Reset the "Actual" columns in the Budget table
 function resetBudgetActuals() {
   const budgetTable = document.getElementById("budget-table");
   const rows = budgetTable.getElementsByTagName("tr");
@@ -278,7 +262,6 @@ function resetBudgetActuals() {
   }
 }
 
-// Update budget totals for month or week
 function updateBudgetTotals(category, amount, expenseDate, type) {
   const budgetTable = document.getElementById("budget-table");
   const rows = budgetTable.getElementsByTagName("tr");
@@ -305,26 +288,37 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
   }
 }
 
-// After calculating all expenses, update the total row
 function updateTotalRow() {
   const budgetTable = document.getElementById("budget-table");
   const rows = budgetTable.getElementsByTagName("tr");
   let totalMonthActual = 0;
   let totalWeekActual = 0;
 
-  // Sum up monthly/weekly actuals
+  // Sum monthly and weekly actuals
   for (let i = 1; i < rows.length - 1; i++) {
     totalMonthActual += parseFloat(rows[i].cells[3].textContent.replace("$", "")) || 0;
     totalWeekActual += parseFloat(rows[i].cells[4].textContent.replace("$", "")) || 0;
   }
 
-  // Update final row
+  // Update the final (Total) row
   const totalRow = rows[rows.length - 1];
   totalRow.cells[3].innerHTML = `<strong>$${totalMonthActual.toFixed(2)}</strong>`;
   totalRow.cells[4].innerHTML = `<strong>$${totalWeekActual.toFixed(2)}</strong>`;
+
+  // Highlight and focus the Actual (Week) cell in the Total row
+  highlightCell(totalRow.cells[4]);
 }
 
-// Color-code based on budget usage
+function highlightCell(cell) {
+  // Add a tabindex so the cell can receive focus
+  cell.setAttribute("tabindex", "-1");
+  cell.classList.add("highlight-week");
+  cell.focus();
+  setTimeout(() => {
+    cell.classList.remove("highlight-week");
+  }, 1500);
+}
+
 function applyBudgetColors(cell, actual, budget) {
   cell.classList.remove("over-budget", "near-budget", "under-budget");
   if (actual > budget) {
@@ -336,7 +330,6 @@ function applyBudgetColors(cell, actual, budget) {
   }
 }
 
-// Populate Month/Year filters and load expenses
 function populateFilters() {
   const monthSelect = document.getElementById("filter-month");
   const yearSelect = document.getElementById("filter-year");
@@ -355,7 +348,6 @@ function populateFilters() {
     "July","August","September","October","November","December"
   ];
 
-  // Populate months
   monthSelect.innerHTML = months
     .map((month, index) => {
       const isSelected = (index + 1 === currentMonth) ? "selected" : "";
@@ -363,7 +355,6 @@ function populateFilters() {
     })
     .join("");
 
-  // Populate years (current year back 10 years)
   yearSelect.innerHTML = [...Array(11)]
     .map((_, i) => {
       const year = currentYear - i;
@@ -372,6 +363,5 @@ function populateFilters() {
     })
     .join("");
 
-  // Load expenses with default filters
   loadExpenses();
 }
