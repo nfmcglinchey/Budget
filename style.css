@@ -13,6 +13,24 @@ h1, h2 {
     color: #222;
 }
 
+/* Notification Styles */
+#notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #007bff;
+    color: #fff;
+    padding: 10px 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 1000;
+}
+#notification.show {
+    opacity: 1;
+}
+
 /* Card containers for sections */
 .card {
     background-color: #fff;
@@ -53,12 +71,15 @@ button {
     background-color: #007bff;
     color: #fff;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease, transform 0.2s ease;
     border: none;
     margin-top: 10px;
 }
 button:hover {
     background-color: #0056b3;
+}
+button:active {
+    transform: scale(0.98);
 }
 
 /* Table Container: Enable Horizontal Scrolling */
@@ -126,6 +147,37 @@ tr:hover {
     background-color: #ccffcc !important;
 }
 
+/* Highlight animation for Actual (Week) total */
+.highlight-week {
+    animation: highlightFlash 1.5s ease-out;
+}
+@keyframes highlightFlash {
+    0%   { background-color: #ffff88; }
+    100% { background-color: transparent; }
+}
+
+/* Container around the chart to control sizing */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 500px; /* Default height on desktop */
+    margin: 0 auto;
+}
+
+/* Adjust height for mobile portrait */
+@media (max-width: 768px) and (orientation: portrait) {
+    .chart-container {
+        height: 300px;
+    }
+}
+
+/* Adjust height for mobile landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+    .chart-container {
+        height: 400px;
+    }
+}
+
 /* Mobile Adjustments */
 @media screen and (max-width: 768px) {
     th, td {
@@ -144,19 +196,12 @@ tr:hover {
     }
     button {
         width: 100%;
+        padding: 12px;
+        font-size: 18px;
     }
 }
+
 .total-row {
     font-weight: bold;
     background-color: #f0f0f0;
-}
-
-/* Highlight animation for Actual (Week) total */
-.highlight-week {
-    animation: highlightFlash 1.5s ease-out;
-}
-
-@keyframes highlightFlash {
-    0%   { background-color: #ffff88; }
-    100% { background-color: transparent; }
 }
