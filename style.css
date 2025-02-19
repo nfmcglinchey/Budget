@@ -229,10 +229,15 @@ tr:hover {
     background-color: #f0f0f0;
 }
 
-/* Editing mode highlight for Add Expense section */
 #add-expense-section.editing-mode {
     border: 2px solid #ff9900;
     box-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
+    animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 10px rgba(255, 153, 0, 0.5); }
+    100% { box-shadow: 0 0 15px rgba(255, 153, 0, 0.8); }
 }
 
 /* Manage Categories: stacked inputs for name/budget */
