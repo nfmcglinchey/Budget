@@ -68,6 +68,14 @@ function renderCategoryList() {
       const newName = prompt("Edit category name:", cat.name);
       const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
       if (newName && !isNaN(newMonthly)) {
+        // If name is changed, check for duplicates
+        if (
+          newName.toLowerCase() !== cat.name.toLowerCase() &&
+          budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
+        ) {
+          showNotification("Duplicate category name. Please enter a unique category.");
+          return;
+        }
         db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
       } else {
         showNotification("Invalid input for editing category.");
@@ -130,20 +138,25 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Manage Categories: Add new category using Firebase
+  // Manage Categories: Add new category using Firebase with duplicate check
   document.getElementById("add-category-button").addEventListener("click", () => {
     const nameInput = document.getElementById("new-category-name");
     const monthlyInput = document.getElementById("new-category-monthly");
     const name = nameInput.value.trim();
     const monthly = parseFloat(monthlyInput.value);
-    if (name && !isNaN(monthly)) {
-      db.ref("categories").push({ name: name, monthly: monthly });
-      nameInput.value = "";
-      monthlyInput.value = "";
-      showNotification("Category added.");
-    } else {
+    if (!name || isNaN(monthly)) {
       showNotification("Please enter valid category name and monthly budget.");
+      return;
     }
+    // Prevent duplicate category names
+    if (budgetCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
+      showNotification("Duplicate category name. Please enter a unique category.");
+      return;
+    }
+    db.ref("categories").push({ name: name, monthly: monthly });
+    nameInput.value = "";
+    monthlyInput.value = "";
+    showNotification("Category added.");
   });
 
   // Toggle Manage Categories section visibility
@@ -199,6 +212,7 @@ function loadBudget() {
     return;
   }
 
+  // Build header row
   budgetTable.innerHTML = `
     <tr>
       <th>Category</th>
@@ -212,6 +226,7 @@ function loadBudget() {
   let totalMonthly = 0;
   let totalWeekly = 0;
 
+  // Build rows for each category
   budgetCategories.forEach(category => {
     const monthlyVal = parseFloat(category.monthly);
     const weeklyBudget = (monthlyVal * 12 / 52).toFixed(2);
@@ -219,15 +234,17 @@ function loadBudget() {
     totalWeekly += parseFloat(weeklyBudget);
 
     const row = budgetTable.insertRow();
+    // Set data-total attributes to track running totals without warning icons interfering
     row.innerHTML = `
       <td>${category.name}</td>
       <td>$${monthlyVal.toFixed(2)}</td>
       <td>$${weeklyBudget}</td>
-      <td class="actual-month">$0.00</td>
-      <td class="actual-week">$0.00</td>
+      <td class="actual-month" data-total="0">$0.00</td>
+      <td class="actual-week" data-total="0">$0.00</td>
     `;
   });
 
+  // Add total row
   const totalRow = budgetTable.insertRow();
   totalRow.innerHTML = `
     <td><strong>Total</strong></td>
@@ -247,8 +264,15 @@ function addExpense() {
   const description = document.getElementById("expense-description")?.value.trim();
   const amount = parseFloat(document.getElementById("expense-amount")?.value);
 
-  if (!date || !category || isNaN(amount) || amount <= 0) {
-    showNotification("Please fill out all fields with valid data.");
+  // Prevent blank fields
+  if (!date || !category || !description || isNaN(amount) || amount <= 0) {
+    showNotification("Please enter a valid date, category, description, and amount.");
+    return;
+  }
+
+  // Limit description length
+  if (description.length > 100) {
+    showNotification("Description is too long (max 100 characters).");
     return;
   }
 
@@ -257,7 +281,6 @@ function addExpense() {
   if (editingExpenseId) {
     db.ref("expenses/" + editingExpenseId).update(expenseData)
       .then(() => {
-        console.log("Expense updated successfully");
         showNotification("Expense updated successfully");
         resetExpenseForm();
       })
@@ -268,7 +291,6 @@ function addExpense() {
   } else {
     db.ref("expenses").push(expenseData)
       .then(() => {
-        console.log("Expense added successfully");
         showNotification("Expense added successfully");
         resetExpenseForm();
       })
@@ -304,7 +326,7 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("cancel-edit-button").style.display = "inline-block";
 
   const addExpenseSection = document.getElementById("add-expense-section");
-  addExpenseSection.classList.add("editing-mode");
+  addExpenseSection.classList.add("editing-mode");  // Highlight editing mode
   addExpenseSection.scrollIntoView({ behavior: "smooth" });
 }
 
@@ -347,6 +369,7 @@ function loadExpenses() {
       </tr>
     `;
 
+    // Reset budget totals (actual amounts are recalculated)
     resetBudgetActuals();
 
     const selectedMonth = document.getElementById("filter-month")?.value;
@@ -453,9 +476,17 @@ function deleteExpense(expenseId) {
 function resetBudgetActuals() {
   const budgetTable = document.getElementById("budget-table");
   const rows = budgetTable.getElementsByTagName("tr");
+  // Reset the actual totals and clear any warning icons
   for (let i = 1; i < rows.length; i++) {
-    rows[i].cells[3].textContent = "$0.00";
-    rows[i].cells[4].textContent = "$0.00";
+    // For cells that track month and week, reset both displayed text and data-total attribute
+    if (rows[i].cells[3]) {
+      rows[i].cells[3].setAttribute("data-total", "0");
+      rows[i].cells[3].textContent = "$0.00";
+    }
+    if (rows[i].cells[4]) {
+      rows[i].cells[4].setAttribute("data-total", "0");
+      rows[i].cells[4].textContent = "$0.00";
+    }
   }
 }
 
@@ -469,16 +500,41 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
     if (rowCategory === category) {
       if (type === "month") {
         const actualMonthCell = row.cells[3];
-        const currentMonthTotal = parseFloat(actualMonthCell.textContent.replace("$", "")) || 0;
+        let currentMonthTotal = parseFloat(actualMonthCell.getAttribute('data-total')) || 0;
         const newMonthTotal = currentMonthTotal + amount;
+        actualMonthCell.setAttribute('data-total', newMonthTotal);
+        // Update the text without warning icons first
         actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
         applyBudgetColors(actualMonthCell, newMonthTotal, parseFloat(row.cells[1].textContent.replace("$", "")));
+        // Check monthly limit and add alert if exceeded
+        const monthlyBudget = parseFloat(row.cells[1].textContent.replace("$", ""));
+        if (newMonthTotal > monthlyBudget && !row.classList.contains("alerted-month")) {
+          showNotification(`Monthly budget exceeded for ${category}`);
+          row.classList.add("alerted-month");
+          // Append a warning icon
+          actualMonthCell.innerHTML += ` <span class="warning-icon" title="Over Budget!">⚠️</span>`;
+        } else if (newMonthTotal <= monthlyBudget && row.classList.contains("alerted-month")) {
+          row.classList.remove("alerted-month");
+          // Remove warning icon if exists by resetting the text
+          actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
+        }
       } else if (type === "week") {
         const actualWeekCell = row.cells[4];
-        const currentWeekTotal = parseFloat(actualWeekCell.textContent.replace("$", "")) || 0;
+        let currentWeekTotal = parseFloat(actualWeekCell.getAttribute('data-total')) || 0;
         const newWeekTotal = currentWeekTotal + amount;
+        actualWeekCell.setAttribute('data-total', newWeekTotal);
         actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
         applyBudgetColors(actualWeekCell, newWeekTotal, parseFloat(row.cells[2].textContent.replace("$", "")));
+        // Check weekly limit and add alert if exceeded
+        const weeklyBudget = parseFloat(row.cells[2].textContent.replace("$", ""));
+        if (newWeekTotal > weeklyBudget && !row.classList.contains("alerted-week")) {
+          showNotification(`Weekly budget exceeded for ${category}`);
+          row.classList.add("alerted-week");
+          actualWeekCell.innerHTML += ` <span class="warning-icon" title="Over Budget!">⚠️</span>`;
+        } else if (newWeekTotal <= weeklyBudget && row.classList.contains("alerted-week")) {
+          row.classList.remove("alerted-week");
+          actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
+        }
       }
     }
   }
@@ -491,8 +547,8 @@ function updateTotalRow() {
   let totalWeekActual = 0;
 
   for (let i = 1; i < rows.length - 1; i++) {
-    totalMonthActual += parseFloat(rows[i].cells[3].textContent.replace("$", "")) || 0;
-    totalWeekActual += parseFloat(rows[i].cells[4].textContent.replace("$", "")) || 0;
+    totalMonthActual += parseFloat(rows[i].cells[3].getAttribute("data-total")) || 0;
+    totalWeekActual += parseFloat(rows[i].cells[4].getAttribute("data-total")) || 0;
   }
 
   const totalRow = rows[rows.length - 1];
@@ -633,7 +689,7 @@ function updateChart() {
     const cells = rows[i].cells;
     labels.push(cells[0].textContent);
     const budgetValue = parseFloat(cells[1].textContent.replace("$", "")) || 0;
-    const actualValue = parseFloat(cells[3].textContent.replace("$", "")) || 0;
+    const actualValue = parseFloat(cells[3].getAttribute("data-total")) || 0;
     budgetValues.push(budgetValue);
     actualValues.push(actualValue);
   }
@@ -658,7 +714,7 @@ function updatePieChart() {
   for (let i = 1; i < rows.length - 1; i++) {
     const cells = rows[i].cells;
     const category = cells[0].textContent;
-    const actualSpending = parseFloat(cells[3].textContent.replace("$", "")) || 0;
+    const actualSpending = parseFloat(cells[3].getAttribute("data-total")) || 0;
     if (categorySpending.hasOwnProperty(category)) {
       categorySpending[category] += actualSpending;
     }
