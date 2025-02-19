@@ -16,8 +16,6 @@ const db = firebase.database();
 let expensesListener = null;
 let spendingChart;
 let chartUpdateTimeout = null;
-
-// Track whether we're showing only newest 5 or all
 let showAllExpenses = false;
 
 // Global budget data array
@@ -31,20 +29,26 @@ const budgetDataArray = [
   { name: "Miscellaneous", monthly: 0 }
 ];
 
+// Global variable to track if an expense is being edited.
+let editingExpenseId = null;
+
 document.addEventListener("DOMContentLoaded", function () {
   setTimeout(setDefaultDate, 500);
   loadBudget();
   populateFilters();
   initializeChart();
 
-  // Add listeners for the Add Expense button
   document.getElementById("add-expense-button").addEventListener("click", addExpense);
 
-  // Listeners for the month/year dropdown
+  // Add Cancel Edit listener.
+  const cancelEditButton = document.getElementById("cancel-edit-button");
+  if (cancelEditButton) {
+    cancelEditButton.addEventListener("click", cancelEdit);
+  }
+
   document.getElementById("filter-month").addEventListener("change", loadExpenses);
   document.getElementById("filter-year").addEventListener("change", loadExpenses);
 
-  // Listener for the toggle button to show newest 5 vs all expenses
   const toggleButton = document.getElementById("toggle-expenses-button");
   if (toggleButton) {
     toggleButton.addEventListener("click", () => {
@@ -139,21 +143,68 @@ function addExpense() {
     return;
   }
 
-  const newExpense = { date, category, description, amount };
+  const expenseData = { date, category, description, amount };
 
-  db.ref("expenses").push(newExpense)
-    .then(() => {
-      console.log("Expense added successfully");
-      showNotification("Expense added successfully");
-      setDefaultDate();
-      document.getElementById("expense-category").selectedIndex = 0;
-      document.getElementById("expense-description").value = "";
-      document.getElementById("expense-amount").value = "";
-    })
-    .catch(error => {
-      console.error("Error adding expense:", error);
-      showNotification("Error adding expense");
-    });
+  if (editingExpenseId) {
+    // Update existing expense.
+    db.ref("expenses/" + editingExpenseId).update(expenseData)
+      .then(() => {
+        console.log("Expense updated successfully");
+        showNotification("Expense updated successfully");
+        resetExpenseForm();
+      })
+      .catch(error => {
+        console.error("Error updating expense:", error);
+        showNotification("Error updating expense");
+      });
+  } else {
+    // Add new expense.
+    db.ref("expenses").push(expenseData)
+      .then(() => {
+        console.log("Expense added successfully");
+        showNotification("Expense added successfully");
+        resetExpenseForm();
+      })
+      .catch(error => {
+        console.error("Error adding expense:", error);
+        showNotification("Error adding expense");
+      });
+  }
+}
+
+function resetExpenseForm() {
+  document.getElementById("expense-date").value = new Date().toISOString().slice(0,10);
+  document.getElementById("expense-category").selectedIndex = 0;
+  document.getElementById("expense-description").value = "";
+  document.getElementById("expense-amount").value = "";
+  editingExpenseId = null;
+
+  document.getElementById("add-expense-button").textContent = "Add Expense";
+  document.getElementById("cancel-edit-button").style.display = "none";
+
+  // Remove highlight class
+  const addExpenseSection = document.getElementById("add-expense-section");
+  addExpenseSection.classList.remove("editing-mode");
+}
+
+function editExpense(expenseId, date, category, description, amount) {
+  editingExpenseId = expenseId;
+  document.getElementById("expense-date").value = date;
+  document.getElementById("expense-category").value = category;
+  document.getElementById("expense-description").value = description;
+  document.getElementById("expense-amount").value = amount;
+
+  document.getElementById("add-expense-button").textContent = "Update Expense";
+  document.getElementById("cancel-edit-button").style.display = "inline-block";
+
+  // Add highlight class and scroll to the section
+  const addExpenseSection = document.getElementById("add-expense-section");
+  addExpenseSection.classList.add("editing-mode");
+  addExpenseSection.scrollIntoView({ behavior: "smooth" });
+}
+
+function cancelEdit() {
+  resetExpenseForm();
 }
 
 function loadExpenses() {
@@ -258,14 +309,25 @@ function loadExpenses() {
       row.appendChild(amountCell);
 
       const actionCell = document.createElement("td");
+
+      // Edit button with spacing
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.style.marginRight = "8px"; // Add spacing
+      editBtn.addEventListener("click", () => {
+        editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
+      });
+      actionCell.appendChild(editBtn);
+
+      // Delete button
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
         deleteExpense(exp.key);
       });
       actionCell.appendChild(deleteBtn);
-      row.appendChild(actionCell);
 
+      row.appendChild(actionCell);
       expensesTable.appendChild(row);
     });
 
@@ -279,6 +341,10 @@ function loadExpenses() {
 function deleteExpense(expenseId) {
   if (!expenseId) {
     console.error("Invalid expense ID");
+    return;
+  }
+  // Confirmation step added.
+  if (!confirm("Are you sure you want to delete this expense?")) {
     return;
   }
   db.ref("expenses/" + expenseId).remove()
@@ -357,10 +423,13 @@ function applyBudgetColors(cell, actual, budget) {
   cell.classList.remove("over-budget", "near-budget", "under-budget");
   if (actual > budget) {
     cell.classList.add("over-budget");
+    cell.title = "Over budget: Spending exceeds the set budget.";
   } else if (actual > budget * 0.75) {
     cell.classList.add("near-budget");
+    cell.title = "Near budget: Spending is close to the budget limit.";
   } else {
     cell.classList.add("under-budget");
+    cell.title = "Under budget: Spending is within budget limits.";
   }
 }
 
@@ -425,7 +494,6 @@ function initializeChart() {
     }
   });
 }
-
 
 function updateChartDebounced() {
   if (chartUpdateTimeout) clearTimeout(chartUpdateTimeout);
