@@ -1,4 +1,4 @@
-// Firebase Configuration
+/* Firebase Configuration */
 const firebaseConfig = {
   apiKey: "AIzaSyA6ZFSK7jPIkiEv47yl8q-O1jh8DNvOsiI",
   authDomain: "budget-data-b9bcc.firebaseapp.com",
@@ -9,38 +9,111 @@ const firebaseConfig = {
   appId: "1:798831217373:web:0d011f497ad3b9ca85a934"
 };
 
-// Initialize Firebase (using compat libraries)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let expensesListener = null;
 let spendingChart;
+let pieChart;
 let chartUpdateTimeout = null;
 let showAllExpenses = false;
 
-// Global budget data array
-const budgetDataArray = [
-  { name: "Groceries", monthly: 1200 },
-  { name: "Dining Out", monthly: 400 },
-  { name: "Entertainment", monthly: 200 },
-  { name: "Haircuts", monthly: 52 },
-  { name: "Alcohol", monthly: 150 },
-  { name: "Weekly Allowance", monthly: 1040 },
-  { name: "Miscellaneous", monthly: 0 }
-];
+// Global variable for budget categories (loaded from Firebase)
+let budgetCategories = [];
 
-// Global variable to track if an expense is being edited.
-let editingExpenseId = null;
+/*-------------------------------------------------------------
+   Category Management (stored in Firebase)
+--------------------------------------------------------------*/
+
+// Load categories from Firebase. If none exist, push defaults.
+function loadCategories() {
+  db.ref("categories").on("value", snapshot => {
+    if (snapshot.numChildren() === 0) {
+      const defaults = [
+        { name: "Groceries", monthly: 1200 },
+        { name: "Dining Out", monthly: 400 },
+        { name: "Entertainment", monthly: 200 },
+        { name: "Haircuts", monthly: 52 },
+        { name: "Alcohol", monthly: 150 },
+        { name: "Weekly Allowance", monthly: 1040 },
+        { name: "Miscellaneous", monthly: 0 }
+      ];
+      defaults.forEach(defaultCat => {
+        db.ref("categories").push(defaultCat);
+      });
+      return;
+    }
+    budgetCategories = [];
+    snapshot.forEach(childSnapshot => {
+      let cat = childSnapshot.val();
+      cat.id = childSnapshot.key;
+      budgetCategories.push(cat);
+    });
+    renderCategoryList();
+    populateExpenseCategoryDropdown();
+    loadBudget(); // Refresh the budget table based on new categories
+  });
+}
+
+function renderCategoryList() {
+  const categoryList = document.getElementById("category-list");
+  categoryList.innerHTML = "";
+  budgetCategories.forEach((cat) => {
+    const li = document.createElement("li");
+    li.textContent = `${cat.name} - $${parseFloat(cat.monthly).toFixed(2)}`;
+    
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => {
+      const newName = prompt("Edit category name:", cat.name);
+      const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
+      if (newName && !isNaN(newMonthly)) {
+        db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
+      } else {
+        showNotification("Invalid input for editing category.");
+      }
+    });
+    li.appendChild(editBtn);
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", () => {
+      customConfirm("Delete this category?").then(confirmed => {
+        if (confirmed) {
+          db.ref("categories/" + cat.id).remove();
+        }
+      });
+    });
+    li.appendChild(deleteBtn);
+    
+    categoryList.appendChild(li);
+  });
+}
+
+function populateExpenseCategoryDropdown() {
+  const categoryDropdown = document.getElementById("expense-category");
+  categoryDropdown.innerHTML = "";
+  budgetCategories.forEach(cat => {
+    const option = document.createElement("option");
+    option.value = cat.name;
+    option.textContent = cat.name;
+    categoryDropdown.appendChild(option);
+  });
+}
+
+/*-------------------------------------------------------------
+   Main Functionality
+--------------------------------------------------------------*/
 
 document.addEventListener("DOMContentLoaded", function () {
   setTimeout(setDefaultDate, 500);
-  loadBudget();
+  loadCategories(); // Load categories from Firebase on startup
   populateFilters();
   initializeChart();
+  initializePieChart();
 
   document.getElementById("add-expense-button").addEventListener("click", addExpense);
 
-  // Add Cancel Edit listener.
   const cancelEditButton = document.getElementById("cancel-edit-button");
   if (cancelEditButton) {
     cancelEditButton.addEventListener("click", cancelEdit);
@@ -56,6 +129,47 @@ document.addEventListener("DOMContentLoaded", function () {
       loadExpenses();
     });
   }
+
+  // Manage Categories: Add new category using Firebase
+  document.getElementById("add-category-button").addEventListener("click", () => {
+    const nameInput = document.getElementById("new-category-name");
+    const monthlyInput = document.getElementById("new-category-monthly");
+    const name = nameInput.value.trim();
+    const monthly = parseFloat(monthlyInput.value);
+    if (name && !isNaN(monthly)) {
+      db.ref("categories").push({ name: name, monthly: monthly });
+      nameInput.value = "";
+      monthlyInput.value = "";
+      showNotification("Category added.");
+    } else {
+      showNotification("Please enter valid category name and monthly budget.");
+    }
+  });
+
+  // Toggle Manage Categories section visibility
+  const toggleManageBtn = document.getElementById("toggle-manage-categories");
+  const manageSection = document.getElementById("manage-categories");
+  toggleManageBtn.addEventListener("click", () => {
+    if (manageSection.style.display === "none" || manageSection.style.display === "") {
+      manageSection.style.display = "block";
+    } else {
+      manageSection.style.display = "none";
+    }
+  });
+
+  // Make each collapsible-header clickable to expand/collapse
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const content = header.nextElementSibling; // the .collapsible-content
+      if (content.style.display === "none" || content.style.display === "") {
+        content.style.display = "block";
+        header.classList.add("expanded"); // rotate arrow
+      } else {
+        content.style.display = "none";
+        header.classList.remove("expanded");
+      }
+    });
+  });
 });
 
 function setDefaultDate() {
@@ -80,10 +194,8 @@ function parseLocalDate(dateString) {
 
 function loadBudget() {
   const budgetTable = document.getElementById("budget-table");
-  const categoryDropdown = document.getElementById("expense-category");
-
-  if (!budgetTable || !categoryDropdown) {
-    console.error("Budget table or category dropdown not found");
+  if (!budgetTable) {
+    console.error("Budget table not found");
     return;
   }
 
@@ -99,26 +211,21 @@ function loadBudget() {
 
   let totalMonthly = 0;
   let totalWeekly = 0;
-  categoryDropdown.innerHTML = "";
 
-  budgetDataArray.forEach(category => {
-    const weeklyBudget = (category.monthly * 12 / 52).toFixed(2);
-    totalMonthly += category.monthly;
+  budgetCategories.forEach(category => {
+    const monthlyVal = parseFloat(category.monthly);
+    const weeklyBudget = (monthlyVal * 12 / 52).toFixed(2);
+    totalMonthly += monthlyVal;
     totalWeekly += parseFloat(weeklyBudget);
 
     const row = budgetTable.insertRow();
     row.innerHTML = `
       <td>${category.name}</td>
-      <td>$${category.monthly.toFixed(2)}</td>
+      <td>$${monthlyVal.toFixed(2)}</td>
       <td>$${weeklyBudget}</td>
       <td class="actual-month">$0.00</td>
       <td class="actual-week">$0.00</td>
     `;
-
-    const option = document.createElement("option");
-    option.value = category.name;
-    option.textContent = category.name;
-    categoryDropdown.appendChild(option);
   });
 
   const totalRow = budgetTable.insertRow();
@@ -132,6 +239,8 @@ function loadBudget() {
   totalRow.classList.add("total-row");
 }
 
+let editingExpenseId = null;
+
 function addExpense() {
   const date = document.getElementById("expense-date")?.value;
   const category = document.getElementById("expense-category")?.value;
@@ -139,14 +248,13 @@ function addExpense() {
   const amount = parseFloat(document.getElementById("expense-amount")?.value);
 
   if (!date || !category || isNaN(amount) || amount <= 0) {
-    alert("Please fill out all fields with valid data.");
+    showNotification("Please fill out all fields with valid data.");
     return;
   }
 
   const expenseData = { date, category, description, amount };
 
   if (editingExpenseId) {
-    // Update existing expense.
     db.ref("expenses/" + editingExpenseId).update(expenseData)
       .then(() => {
         console.log("Expense updated successfully");
@@ -158,7 +266,6 @@ function addExpense() {
         showNotification("Error updating expense");
       });
   } else {
-    // Add new expense.
     db.ref("expenses").push(expenseData)
       .then(() => {
         console.log("Expense added successfully");
@@ -182,7 +289,6 @@ function resetExpenseForm() {
   document.getElementById("add-expense-button").textContent = "Add Expense";
   document.getElementById("cancel-edit-button").style.display = "none";
 
-  // Remove highlight class
   const addExpenseSection = document.getElementById("add-expense-section");
   addExpenseSection.classList.remove("editing-mode");
 }
@@ -197,7 +303,6 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
 
-  // Add highlight class and scroll to the section
   const addExpenseSection = document.getElementById("add-expense-section");
   addExpenseSection.classList.add("editing-mode");
   addExpenseSection.scrollIntoView({ behavior: "smooth" });
@@ -214,13 +319,11 @@ function loadExpenses() {
     return;
   }
 
-  // Toggle button text
   const toggleButton = document.getElementById("toggle-expenses-button");
   if (toggleButton) {
     toggleButton.textContent = showAllExpenses ? "Show Newest 5" : "Show All";
   }
 
-  // Prepare for weekly logic
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = (today.getDay() - 5 + 7) % 7;
@@ -234,7 +337,6 @@ function loadExpenses() {
   }
 
   expensesListener = (snapshot) => {
-    // Clear the table header each time the snapshot callback runs
     expensesTable.innerHTML = `
       <tr>
         <th>Date</th>
@@ -250,7 +352,6 @@ function loadExpenses() {
     const selectedMonth = document.getElementById("filter-month")?.value;
     const selectedYear = document.getElementById("filter-year")?.value;
 
-    // Collect all monthly expenses in an array
     const monthlyExpenses = [];
 
     snapshot.forEach(childSnapshot => {
@@ -259,12 +360,8 @@ function loadExpenses() {
       const expenseMonth = (expenseDate.getMonth() + 1).toString();
       const expenseYear = expenseDate.getFullYear().toString();
 
-      // If this expense matches the selected month/year
       if (expenseMonth === selectedMonth && expenseYear === selectedYear) {
-        // Always update monthly totals
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "month");
-
-        // Add it to our monthlyExpenses array (for table display)
         monthlyExpenses.push({
           key: childSnapshot.key,
           date: expense.date,
@@ -275,19 +372,14 @@ function loadExpenses() {
         });
       }
 
-      // Update weekly totals if the expense is in the current week
       if (expenseDate >= startOfWeek && expenseDate < endOfWeek) {
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "week");
       }
     });
 
-    // Sort monthlyExpenses by date descending
     monthlyExpenses.sort((a, b) => b.parsedDate - a.parsedDate);
-
-    // If we're not showing all, just keep the newest 5
     const finalExpenses = showAllExpenses ? monthlyExpenses : monthlyExpenses.slice(0, 5);
 
-    // Now build the table rows for finalExpenses
     finalExpenses.forEach(exp => {
       const formattedDate = formatDate(exp.date);
       const row = document.createElement("tr");
@@ -310,20 +402,23 @@ function loadExpenses() {
 
       const actionCell = document.createElement("td");
 
-      // Edit button with spacing
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
-      editBtn.style.marginRight = "8px"; // Add spacing
+      editBtn.style.marginRight = "8px";
       editBtn.addEventListener("click", () => {
         editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
       });
       actionCell.appendChild(editBtn);
 
-      // Delete button
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
-        deleteExpense(exp.key);
+        customConfirm("Are you sure you want to delete this expense?")
+        .then(confirmed => {
+          if (confirmed) {
+            deleteExpense(exp.key);
+          }
+        });
       });
       actionCell.appendChild(deleteBtn);
 
@@ -333,6 +428,7 @@ function loadExpenses() {
 
     updateTotalRow();
     updateChartDebounced();
+    updatePieChart();
   };
 
   db.ref("expenses").on("value", expensesListener);
@@ -341,10 +437,6 @@ function loadExpenses() {
 function deleteExpense(expenseId) {
   if (!expenseId) {
     console.error("Invalid expense ID");
-    return;
-  }
-  // Confirmation step added.
-  if (!confirm("Are you sure you want to delete this expense?")) {
     return;
   }
   db.ref("expenses/" + expenseId).remove()
@@ -479,14 +571,40 @@ function initializeChart() {
         {
           label: "Monthly Budget",
           data: [],
-          backgroundColor: "#1D72B8", // Deep blue (fully opaque)
+          backgroundColor: "#1D72B8",
         },
         {
           label: "Actual Spending",
           data: [],
-          backgroundColor: "#FF3B30", // Bright red (fully opaque)
+          backgroundColor: "#FF3B30",
         }
       ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+    }
+  });
+}
+
+function initializePieChart() {
+  const ctx = document.getElementById("pie-chart-canvas").getContext("2d");
+  pieChart = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: [
+          "#FF6384",
+          "#36A2EB",
+          "#FFCE56",
+          "#4BC0C0",
+          "#9966FF",
+          "#FF9F40",
+          "#34c759"
+        ]
+      }]
     },
     options: {
       responsive: true,
@@ -528,6 +646,34 @@ function updateChart() {
   }
 }
 
+function updatePieChart() {
+  const budgetTable = document.getElementById("budget-table");
+  if (!budgetTable) return;
+  const rows = budgetTable.getElementsByTagName("tr");
+  const categorySpending = {};
+  budgetCategories.forEach(cat => {
+    categorySpending[cat.name] = 0;
+  });
+
+  for (let i = 1; i < rows.length - 1; i++) {
+    const cells = rows[i].cells;
+    const category = cells[0].textContent;
+    const actualSpending = parseFloat(cells[3].textContent.replace("$", "")) || 0;
+    if (categorySpending.hasOwnProperty(category)) {
+      categorySpending[category] += actualSpending;
+    }
+  }
+
+  const labels = Object.keys(categorySpending);
+  const data = Object.values(categorySpending);
+
+  if (pieChart) {
+    pieChart.data.labels = labels;
+    pieChart.data.datasets[0].data = data;
+    pieChart.update();
+  }
+}
+
 function showNotification(message) {
   const notification = document.getElementById("notification");
   if (!notification) return;
@@ -536,4 +682,45 @@ function showNotification(message) {
   setTimeout(() => {
     notification.classList.remove("show");
   }, 2000);
+}
+
+/* 
+   Updated modal approach: 
+   - Display modal as flex (centered)
+   - Add 'modal-open' class to body to prevent background scroll
+*/
+function customConfirm(message) {
+  return new Promise(resolve => {
+    const modal = document.getElementById("modal");
+    const modalMessage = document.getElementById("modal-message");
+    const confirmBtn = document.getElementById("modal-confirm");
+    const cancelBtn = document.getElementById("modal-cancel");
+
+    modalMessage.textContent = message;
+
+    // Show the modal and lock background scroll
+    modal.style.display = "flex";
+    document.body.classList.add("modal-open");
+
+    function cleanup() {
+      modal.style.display = "none";
+      document.body.classList.remove("modal-open");
+
+      confirmBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onCancel);
+    }
+
+    function onConfirm() {
+      cleanup();
+      resolve(true);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(false);
+    }
+
+    confirmBtn.addEventListener("click", onConfirm);
+    cancelBtn.addEventListener("click", onCancel);
+  });
 }
