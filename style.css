@@ -3,7 +3,7 @@ body {
     font-family: 'Roboto', sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: #f9f9f9;
+    background-color: #f0f2f5; /* Updated background */
     color: #333;
 }
 
@@ -18,7 +18,7 @@ h1, h2 {
     position: fixed;
     top: 20px;
     right: 20px;
-    background-color: #007bff;
+    background-color: #1d72b8; /* New primary accent */
     color: #fff;
     padding: 10px 15px;
     border-radius: 4px;
@@ -68,7 +68,7 @@ input, select, button {
 
 /* Button styles */
 button {
-    background-color: #007bff;
+    background-color: #1d72b8; /* New primary accent */
     color: #fff;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
@@ -76,7 +76,7 @@ button {
     margin-top: 10px;
 }
 button:hover {
-    background-color: #0056b3;
+    background-color: #155d8a; /* Darker on hover */
 }
 button:active {
     transform: scale(0.98);
@@ -138,13 +138,13 @@ tr:hover {
 
 /* Budget Status Colors */
 .over-budget {
-    background-color: #ffcccc !important;
+    background-color: #ff3b30 !important; /* Bright red */
 }
 .near-budget {
-    background-color: #fff3cc !important;
+    background-color: #ffcc00 !important; /* Bright yellow */
 }
 .under-budget {
-    background-color: #ccffcc !important;
+    background-color: #34c759 !important; /* Bright green */
 }
 
 /* Highlight animation for Actual (Week) total */
