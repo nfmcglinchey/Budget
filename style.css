@@ -205,3 +205,9 @@ tr:hover {
     font-weight: bold;
     background-color: #f0f0f0;
 }
+
+/* Highlight for Add Expense section in edit mode */
+#add-expense-section.editing-mode {
+    border: 2px solid #ff9900;
+    box-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
+}
