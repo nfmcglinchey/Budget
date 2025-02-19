@@ -410,12 +410,12 @@ function initializeChart() {
         {
           label: "Monthly Budget",
           data: [],
-          backgroundColor: "rgba(0,123,255,0.5)",
+          backgroundColor: "#1D72B8", // Deep blue (fully opaque)
         },
         {
           label: "Actual Spending",
           data: [],
-          backgroundColor: "rgba(255,99,132,0.5)",
+          backgroundColor: "#FF3B30", // Bright red (fully opaque)
         }
       ]
     },
@@ -425,6 +425,7 @@ function initializeChart() {
     }
   });
 }
+
 
 function updateChartDebounced() {
   if (chartUpdateTimeout) clearTimeout(chartUpdateTimeout);
