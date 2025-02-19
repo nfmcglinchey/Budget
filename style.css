@@ -150,3 +150,13 @@ tr:hover {
     font-weight: bold;
     background-color: #f0f0f0;
 }
+
+/* Highlight animation for Actual (Week) total */
+.highlight-week {
+    animation: highlightFlash 1.5s ease-out;
+}
+
+@keyframes highlightFlash {
+    0%   { background-color: #ffff88; }
+    100% { background-color: transparent; }
+}
