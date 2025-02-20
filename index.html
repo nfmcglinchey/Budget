@@ -60,27 +60,29 @@
       </table>
     </div>
 
-    <!-- Add Expense Section -->
-    <div id="add-expense-section" class="card">
-      <h2>Add Expense</h2>
-      <div class="form-group">
-        <label for="expense-date">Date:</label>
-        <input type="date" id="expense-date" />
+    <!-- Add Expense Section (now collapsible) -->
+    <div id="add-expense-section" class="card collapsible">
+      <h2 class="collapsible-header">Add Expense</h2>
+      <div class="collapsible-content" style="display: none;">
+        <div class="form-group">
+          <label for="expense-date">Date:</label>
+          <input type="date" id="expense-date" />
+        </div>
+        <div class="form-group">
+          <label for="expense-category">Category:</label>
+          <select id="expense-category"></select>
+        </div>
+        <div class="form-group">
+          <label for="expense-description">Description:</label>
+          <input type="text" id="expense-description" />
+        </div>
+        <div class="form-group">
+          <label for="expense-amount">Amount:</label>
+          <input type="number" id="expense-amount" step="0.01" />
+        </div>
+        <button id="add-expense-button">Add Expense</button>
+        <button id="cancel-edit-button" style="display: none;">Cancel Edit</button>
       </div>
-      <div class="form-group">
-        <label for="expense-category">Category:</label>
-        <select id="expense-category"></select>
-      </div>
-      <div class="form-group">
-        <label for="expense-description">Description:</label>
-        <input type="text" id="expense-description" />
-      </div>
-      <div class="form-group">
-        <label for="expense-amount">Amount:</label>
-        <input type="number" id="expense-amount" step="0.01" />
-      </div>
-      <button id="add-expense-button">Add Expense</button>
-      <button id="cancel-edit-button" style="display: none;">Cancel Edit</button>
     </div>
 
     <!-- Expenses Section (collapsed by default) -->
