@@ -170,13 +170,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Make each collapsible-header clickable to expand/collapse
+  // Make each collapsible header clickable to expand/collapse
   document.querySelectorAll('.collapsible-header').forEach(header => {
     header.addEventListener('click', () => {
       const content = header.nextElementSibling; // the .collapsible-content
       if (content.style.display === "none" || content.style.display === "") {
         content.style.display = "block";
-        header.classList.add("expanded"); // rotate arrow
+        header.classList.add("expanded");
       } else {
         content.style.display = "none";
         header.classList.remove("expanded");
@@ -234,7 +234,6 @@ function loadBudget() {
     totalWeekly += parseFloat(weeklyBudget);
 
     const row = budgetTable.insertRow();
-    // Set data-total attributes to track running totals without warning icons interfering
     row.innerHTML = `
       <td>${category.name}</td>
       <td>$${monthlyVal.toFixed(2)}</td>
@@ -326,7 +325,14 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("cancel-edit-button").style.display = "inline-block";
 
   const addExpenseSection = document.getElementById("add-expense-section");
-  addExpenseSection.classList.add("editing-mode");  // Highlight editing mode
+  // Ensure the collapsible content is expanded
+  const collapsibleContent = addExpenseSection.querySelector('.collapsible-content');
+  if (collapsibleContent && (collapsibleContent.style.display === "none" || collapsibleContent.style.display === "")) {
+    collapsibleContent.style.display = "block";
+    const header = addExpenseSection.querySelector('.collapsible-header');
+    if (header) header.classList.add("expanded");
+  }
+  addExpenseSection.classList.add("editing-mode");
   addExpenseSection.scrollIntoView({ behavior: "smooth" });
 }
 
@@ -503,19 +509,12 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
         let currentMonthTotal = parseFloat(actualMonthCell.getAttribute('data-total')) || 0;
         const newMonthTotal = currentMonthTotal + amount;
         actualMonthCell.setAttribute('data-total', newMonthTotal);
-        // Update the text without warning icons first
-        actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
-        applyBudgetColors(actualMonthCell, newMonthTotal, parseFloat(row.cells[1].textContent.replace("$", "")));
-        // Check monthly limit and add alert if exceeded
         const monthlyBudget = parseFloat(row.cells[1].textContent.replace("$", ""));
-        if (newMonthTotal > monthlyBudget && !row.classList.contains("alerted-month")) {
-          showNotification(`Monthly budget exceeded for ${category}`);
-          row.classList.add("alerted-month");
-          // Append a warning icon
-          actualMonthCell.innerHTML += ` <span class="warning-icon" title="Over Budget!">⚠️</span>`;
-        } else if (newMonthTotal <= monthlyBudget && row.classList.contains("alerted-month")) {
-          row.classList.remove("alerted-month");
-          // Remove warning icon if exists by resetting the text
+        // Apply RYG color coding first
+        applyBudgetColors(actualMonthCell, newMonthTotal, monthlyBudget);
+        if (newMonthTotal > monthlyBudget) {
+          actualMonthCell.innerHTML = `$${newMonthTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
+        } else {
           actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
         }
       } else if (type === "week") {
@@ -523,16 +522,12 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
         let currentWeekTotal = parseFloat(actualWeekCell.getAttribute('data-total')) || 0;
         const newWeekTotal = currentWeekTotal + amount;
         actualWeekCell.setAttribute('data-total', newWeekTotal);
-        actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
-        applyBudgetColors(actualWeekCell, newWeekTotal, parseFloat(row.cells[2].textContent.replace("$", "")));
-        // Check weekly limit and add alert if exceeded
         const weeklyBudget = parseFloat(row.cells[2].textContent.replace("$", ""));
-        if (newWeekTotal > weeklyBudget && !row.classList.contains("alerted-week")) {
-          showNotification(`Weekly budget exceeded for ${category}`);
-          row.classList.add("alerted-week");
-          actualWeekCell.innerHTML += ` <span class="warning-icon" title="Over Budget!">⚠️</span>`;
-        } else if (newWeekTotal <= weeklyBudget && row.classList.contains("alerted-week")) {
-          row.classList.remove("alerted-week");
+        // Apply RYG color coding first
+        applyBudgetColors(actualWeekCell, newWeekTotal, weeklyBudget);
+        if (newWeekTotal > weeklyBudget) {
+          actualWeekCell.innerHTML = `$${newWeekTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
+        } else {
           actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
         }
       }
