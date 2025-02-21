@@ -78,8 +78,8 @@
         </div>
         <div class="form-group">
           <label for="expense-amount">Amount:</label>
-          <!-- Changed from type="number" to type="text" for currency formatting -->
-          <input type="text" id="expense-amount" />
+          <!-- Updated input field to use inputmode="numeric" and a numeric pattern so mobile displays the 10-key keypad -->
+          <input type="text" id="expense-amount" inputmode="numeric" pattern="[0-9]*" />
         </div>
         <button id="add-expense-button">Add Expense</button>
         <button id="cancel-edit-button" style="display: none;">Cancel Edit</button>
@@ -95,8 +95,6 @@
           <select id="filter-month"></select>
           <label for="filter-year">Year:</label>
           <select id="filter-year"></select>
-          <!-- Toggle Button -->
-          <button id="toggle-expenses-button">Show All</button>
         </div>
         <table id="expenses-table">
           <tr>
@@ -107,6 +105,8 @@
             <th>Action</th>
           </tr>
         </table>
+        <!-- Pagination Controls -->
+        <div id="pagination-controls"></div>
       </div>
     </div>
 
