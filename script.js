@@ -127,7 +127,7 @@ function populateExpenseCategoryDropdown() {
 }
 
 /*-------------------------------------------------------------
-   POPULATE FILTERS FUNCTION (RE-ADDED)
+   POPULATE FILTERS FUNCTION
 -------------------------------------------------------------*/
 function populateFilters() {
   const monthSelect = document.getElementById("filter-month");
