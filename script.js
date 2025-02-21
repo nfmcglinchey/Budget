@@ -17,42 +17,46 @@ let spendingChart;
 let pieChart;
 let chartUpdateTimeout = null;
 let showAllExpenses = false;
+let editingExpenseId = null;
 
 // Global variable for budget categories (loaded from Firebase)
 let budgetCategories = [];
 
 /*-------------------------------------------------------------
    Category Management (stored in Firebase)
---------------------------------------------------------------*/
-
-// Load categories from Firebase. If none exist, push defaults.
-function loadCategories() {
-  db.ref("categories").on("value", snapshot => {
-    if (snapshot.numChildren() === 0) {
-      const defaults = [
-        { name: "Groceries", monthly: 1200 },
-        { name: "Dining Out", monthly: 400 },
-        { name: "Entertainment", monthly: 200 },
-        { name: "Haircuts", monthly: 52 },
-        { name: "Alcohol", monthly: 150 },
-        { name: "Weekly Allowance", monthly: 1040 },
-        { name: "Miscellaneous", monthly: 0 }
-      ];
-      defaults.forEach(defaultCat => {
-        db.ref("categories").push(defaultCat);
+-------------------------------------------------------------*/
+async function loadCategories() {
+  try {
+    db.ref("categories").on("value", snapshot => {
+      if (snapshot.numChildren() === 0) {
+        const defaults = [
+          { name: "Groceries", monthly: 1200 },
+          { name: "Dining Out", monthly: 400 },
+          { name: "Entertainment", monthly: 200 },
+          { name: "Haircuts", monthly: 52 },
+          { name: "Alcohol", monthly: 150 },
+          { name: "Weekly Allowance", monthly: 1040 },
+          { name: "Miscellaneous", monthly: 0 }
+        ];
+        defaults.forEach(defaultCat => {
+          db.ref("categories").push(defaultCat);
+        });
+        return;
+      }
+      budgetCategories = [];
+      snapshot.forEach(childSnapshot => {
+        let cat = childSnapshot.val();
+        cat.id = childSnapshot.key;
+        budgetCategories.push(cat);
       });
-      return;
-    }
-    budgetCategories = [];
-    snapshot.forEach(childSnapshot => {
-      let cat = childSnapshot.val();
-      cat.id = childSnapshot.key;
-      budgetCategories.push(cat);
+      renderCategoryList();
+      populateExpenseCategoryDropdown();
+      loadBudget(); // Refresh the budget table based on new categories
     });
-    renderCategoryList();
-    populateExpenseCategoryDropdown();
-    loadBudget(); // Refresh the budget table based on new categories
-  });
+  } catch (error) {
+    console.error("Error loading categories:", error);
+    showNotification("Error loading categories.");
+  }
 }
 
 function renderCategoryList() {
@@ -68,7 +72,7 @@ function renderCategoryList() {
       const newName = prompt("Edit category name:", cat.name);
       const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
       if (newName && !isNaN(newMonthly)) {
-        // If name is changed, check for duplicates
+        // Check for duplicates when name is changed
         if (
           newName.toLowerCase() !== cat.name.toLowerCase() &&
           budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
@@ -76,7 +80,11 @@ function renderCategoryList() {
           showNotification("Duplicate category name. Please enter a unique category.");
           return;
         }
-        db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
+        db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly })
+          .catch(error => {
+            console.error("Error updating category:", error);
+            showNotification("Error updating category.");
+          });
       } else {
         showNotification("Invalid input for editing category.");
       }
@@ -88,7 +96,11 @@ function renderCategoryList() {
     deleteBtn.addEventListener("click", () => {
       customConfirm("Delete this category?").then(confirmed => {
         if (confirmed) {
-          db.ref("categories/" + cat.id).remove();
+          db.ref("categories/" + cat.id).remove()
+            .catch(error => {
+              console.error("Error deleting category:", error);
+              showNotification("Error deleting category.");
+            });
         }
       });
     });
@@ -111,11 +123,10 @@ function populateExpenseCategoryDropdown() {
 
 /*-------------------------------------------------------------
    Main Functionality
---------------------------------------------------------------*/
-
+-------------------------------------------------------------*/
 document.addEventListener("DOMContentLoaded", function () {
   setTimeout(setDefaultDate, 500);
-  loadCategories(); // Load categories from Firebase on startup
+  loadCategories();
   populateFilters();
   initializeChart();
   initializePieChart();
@@ -148,15 +159,20 @@ document.addEventListener("DOMContentLoaded", function () {
       showNotification("Please enter valid category name and monthly budget.");
       return;
     }
-    // Prevent duplicate category names
     if (budgetCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
       showNotification("Duplicate category name. Please enter a unique category.");
       return;
     }
-    db.ref("categories").push({ name: name, monthly: monthly });
-    nameInput.value = "";
-    monthlyInput.value = "";
-    showNotification("Category added.");
+    db.ref("categories").push({ name: name, monthly: monthly })
+      .then(() => {
+        showNotification("Category added.");
+        nameInput.value = "";
+        monthlyInput.value = "";
+      })
+      .catch(error => {
+        console.error("Error adding category:", error);
+        showNotification("Error adding category.");
+      });
   });
 
   // Toggle Manage Categories section visibility
@@ -173,7 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Make each collapsible header clickable to expand/collapse
   document.querySelectorAll('.collapsible-header').forEach(header => {
     header.addEventListener('click', () => {
-      const content = header.nextElementSibling; // the .collapsible-content
+      const content = header.nextElementSibling;
       if (content.style.display === "none" || content.style.display === "") {
         content.style.display = "block";
         header.classList.add("expanded");
@@ -211,8 +227,6 @@ function loadBudget() {
     console.error("Budget table not found");
     return;
   }
-
-  // Build header row
   budgetTable.innerHTML = `
     <tr>
       <th>Category</th>
@@ -222,17 +236,13 @@ function loadBudget() {
       <th>Actual (Week)</th>
     </tr>
   `;
-
   let totalMonthly = 0;
   let totalWeekly = 0;
-
-  // Build rows for each category
   budgetCategories.forEach(category => {
     const monthlyVal = parseFloat(category.monthly);
     const weeklyBudget = (monthlyVal * 12 / 52).toFixed(2);
     totalMonthly += monthlyVal;
     totalWeekly += parseFloat(weeklyBudget);
-
     const row = budgetTable.insertRow();
     row.innerHTML = `
       <td>${category.name}</td>
@@ -242,8 +252,6 @@ function loadBudget() {
       <td class="actual-week" data-total="0">$0.00</td>
     `;
   });
-
-  // Add total row
   const totalRow = budgetTable.insertRow();
   totalRow.innerHTML = `
     <td><strong>Total</strong></td>
@@ -255,48 +263,33 @@ function loadBudget() {
   totalRow.classList.add("total-row");
 }
 
-let editingExpenseId = null;
+async function addExpense() {
+  try {
+    const date = document.getElementById("expense-date")?.value;
+    const category = document.getElementById("expense-category")?.value;
+    const description = document.getElementById("expense-description")?.value.trim();
+    const amount = parseFloat(document.getElementById("expense-amount")?.value);
+    
+    if (!date || !category || !description || isNaN(amount) || amount <= 0) {
+      showNotification("Please enter valid details.");
+      return;
+    }
+    
+    // Optional: Add additional duplicate checks or validation as needed
 
-function addExpense() {
-  const date = document.getElementById("expense-date")?.value;
-  const category = document.getElementById("expense-category")?.value;
-  const description = document.getElementById("expense-description")?.value.trim();
-  const amount = parseFloat(document.getElementById("expense-amount")?.value);
+    const expenseData = { date, category, description, amount };
 
-  // Prevent blank fields
-  if (!date || !category || !description || isNaN(amount) || amount <= 0) {
-    showNotification("Please enter a valid date, category, description, and amount.");
-    return;
-  }
-
-  // Limit description length
-  if (description.length > 100) {
-    showNotification("Description is too long (max 100 characters).");
-    return;
-  }
-
-  const expenseData = { date, category, description, amount };
-
-  if (editingExpenseId) {
-    db.ref("expenses/" + editingExpenseId).update(expenseData)
-      .then(() => {
-        showNotification("Expense updated successfully");
-        resetExpenseForm();
-      })
-      .catch(error => {
-        console.error("Error updating expense:", error);
-        showNotification("Error updating expense");
-      });
-  } else {
-    db.ref("expenses").push(expenseData)
-      .then(() => {
-        showNotification("Expense added successfully");
-        resetExpenseForm();
-      })
-      .catch(error => {
-        console.error("Error adding expense:", error);
-        showNotification("Error adding expense");
-      });
+    if (editingExpenseId) {
+      await db.ref("expenses/" + editingExpenseId).update(expenseData);
+      showNotification("Expense updated successfully");
+    } else {
+      await db.ref("expenses").push(expenseData);
+      showNotification("Expense added successfully");
+    }
+    resetExpenseForm();
+  } catch (error) {
+    console.error("Error processing expense:", error);
+    showNotification("Error processing expense. Please try again.");
   }
 }
 
@@ -306,12 +299,9 @@ function resetExpenseForm() {
   document.getElementById("expense-description").value = "";
   document.getElementById("expense-amount").value = "";
   editingExpenseId = null;
-
   document.getElementById("add-expense-button").textContent = "Add Expense";
   document.getElementById("cancel-edit-button").style.display = "none";
-
-  const addExpenseSection = document.getElementById("add-expense-section");
-  addExpenseSection.classList.remove("editing-mode");
+  document.getElementById("add-expense-section").classList.remove("editing-mode");
 }
 
 function editExpense(expenseId, date, category, description, amount) {
@@ -320,12 +310,9 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("expense-category").value = category;
   document.getElementById("expense-description").value = description;
   document.getElementById("expense-amount").value = amount;
-
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
-
   const addExpenseSection = document.getElementById("add-expense-section");
-  // Ensure the collapsible content is expanded
   const collapsibleContent = addExpenseSection.querySelector('.collapsible-content');
   if (collapsibleContent && (collapsibleContent.style.display === "none" || collapsibleContent.style.display === "")) {
     collapsibleContent.style.display = "block";
@@ -346,12 +333,10 @@ function loadExpenses() {
     console.error("Expenses table not found");
     return;
   }
-
   const toggleButton = document.getElementById("toggle-expenses-button");
   if (toggleButton) {
     toggleButton.textContent = showAllExpenses ? "Show Newest 5" : "Show All";
   }
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = (today.getDay() - 5 + 7) % 7;
@@ -363,7 +348,6 @@ function loadExpenses() {
   if (expensesListener) {
     db.ref("expenses").off("value", expensesListener);
   }
-
   expensesListener = (snapshot) => {
     expensesTable.innerHTML = `
       <tr>
@@ -374,21 +358,15 @@ function loadExpenses() {
         <th>Action</th>
       </tr>
     `;
-
-    // Reset budget totals (actual amounts are recalculated)
     resetBudgetActuals();
-
     const selectedMonth = document.getElementById("filter-month")?.value;
     const selectedYear = document.getElementById("filter-year")?.value;
-
     const monthlyExpenses = [];
-
     snapshot.forEach(childSnapshot => {
       const expense = childSnapshot.val();
       const expenseDate = parseLocalDate(expense.date);
       const expenseMonth = (expenseDate.getMonth() + 1).toString();
       const expenseYear = expenseDate.getFullYear().toString();
-
       if (expenseMonth === selectedMonth && expenseYear === selectedYear) {
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "month");
         monthlyExpenses.push({
@@ -400,37 +378,28 @@ function loadExpenses() {
           parsedDate: expenseDate
         });
       }
-
       if (expenseDate >= startOfWeek && expenseDate < endOfWeek) {
         updateBudgetTotals(expense.category, expense.amount, expenseDate, "week");
       }
     });
-
     monthlyExpenses.sort((a, b) => b.parsedDate - a.parsedDate);
     const finalExpenses = showAllExpenses ? monthlyExpenses : monthlyExpenses.slice(0, 5);
-
     finalExpenses.forEach(exp => {
       const formattedDate = formatDate(exp.date);
       const row = document.createElement("tr");
-
       const dateCell = document.createElement("td");
       dateCell.textContent = formattedDate;
       row.appendChild(dateCell);
-
       const categoryCell = document.createElement("td");
       categoryCell.textContent = exp.category;
       row.appendChild(categoryCell);
-
       const descCell = document.createElement("td");
       descCell.textContent = exp.description || "—";
       row.appendChild(descCell);
-
       const amountCell = document.createElement("td");
       amountCell.textContent = `$${exp.amount.toFixed(2)}`;
       row.appendChild(amountCell);
-
       const actionCell = document.createElement("td");
-
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
       editBtn.style.marginRight = "8px";
@@ -438,28 +407,24 @@ function loadExpenses() {
         editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
       });
       actionCell.appendChild(editBtn);
-
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
         customConfirm("Are you sure you want to delete this expense?")
-        .then(confirmed => {
-          if (confirmed) {
-            deleteExpense(exp.key);
-          }
-        });
+          .then(confirmed => {
+            if (confirmed) {
+              deleteExpense(exp.key);
+            }
+          });
       });
       actionCell.appendChild(deleteBtn);
-
       row.appendChild(actionCell);
       expensesTable.appendChild(row);
     });
-
     updateTotalRow();
     updateChartDebounced();
     updatePieChart();
   };
-
   db.ref("expenses").on("value", expensesListener);
 }
 
@@ -482,9 +447,7 @@ function deleteExpense(expenseId) {
 function resetBudgetActuals() {
   const budgetTable = document.getElementById("budget-table");
   const rows = budgetTable.getElementsByTagName("tr");
-  // Reset the actual totals and clear any warning icons
   for (let i = 1; i < rows.length; i++) {
-    // For cells that track month and week, reset both displayed text and data-total attribute
     if (rows[i].cells[3]) {
       rows[i].cells[3].setAttribute("data-total", "0");
       rows[i].cells[3].textContent = "$0.00";
@@ -499,7 +462,6 @@ function resetBudgetActuals() {
 function updateBudgetTotals(category, amount, expenseDate, type) {
   const budgetTable = document.getElementById("budget-table");
   const rows = budgetTable.getElementsByTagName("tr");
-
   for (let i = 1; i < rows.length - 1; i++) {
     const row = rows[i];
     const rowCategory = row.cells[0].textContent;
@@ -510,7 +472,6 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
         const newMonthTotal = currentMonthTotal + amount;
         actualMonthCell.setAttribute('data-total', newMonthTotal);
         const monthlyBudget = parseFloat(row.cells[1].textContent.replace("$", ""));
-        // Apply RYG color coding first
         applyBudgetColors(actualMonthCell, newMonthTotal, monthlyBudget);
         if (newMonthTotal > monthlyBudget) {
           actualMonthCell.innerHTML = `$${newMonthTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
@@ -523,7 +484,6 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
         const newWeekTotal = currentWeekTotal + amount;
         actualWeekCell.setAttribute('data-total', newWeekTotal);
         const weeklyBudget = parseFloat(row.cells[2].textContent.replace("$", ""));
-        // Apply RYG color coding first
         applyBudgetColors(actualWeekCell, newWeekTotal, weeklyBudget);
         if (newWeekTotal > weeklyBudget) {
           actualWeekCell.innerHTML = `$${newWeekTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
@@ -540,16 +500,13 @@ function updateTotalRow() {
   const rows = budgetTable.getElementsByTagName("tr");
   let totalMonthActual = 0;
   let totalWeekActual = 0;
-
   for (let i = 1; i < rows.length - 1; i++) {
     totalMonthActual += parseFloat(rows[i].cells[3].getAttribute("data-total")) || 0;
     totalWeekActual += parseFloat(rows[i].cells[4].getAttribute("data-total")) || 0;
   }
-
   const totalRow = rows[rows.length - 1];
   totalRow.cells[3].innerHTML = `<strong>$${totalMonthActual.toFixed(2)}</strong>`;
   totalRow.cells[4].innerHTML = `<strong>$${totalWeekActual.toFixed(2)}</strong>`;
-
   highlightCell(totalRow.cells[4]);
 }
 
@@ -579,28 +536,23 @@ function applyBudgetColors(cell, actual, budget) {
 function populateFilters() {
   const monthSelect = document.getElementById("filter-month");
   const yearSelect = document.getElementById("filter-year");
-
   if (!monthSelect || !yearSelect) {
     console.error("Dropdowns not found.");
     return;
   }
-
   const today = new Date();
   const currentMonth = today.getMonth() + 1;
   const currentYear = today.getFullYear();
-
   const months = [
     "January","February","March","April","May","June",
     "July","August","September","October","November","December"
   ];
-
   monthSelect.innerHTML = months
     .map((month, index) => {
       const isSelected = (index + 1 === currentMonth) ? "selected" : "";
       return `<option value="${index + 1}" ${isSelected}>${month}</option>`;
     })
     .join("");
-
   yearSelect.innerHTML = [...Array(11)]
     .map((_, i) => {
       const year = currentYear - i;
@@ -608,7 +560,6 @@ function populateFilters() {
       return `<option value="${year}" ${isSelected}>${year}</option>`;
     })
     .join("");
-
   loadExpenses();
 }
 
@@ -679,7 +630,6 @@ function updateChart() {
   const labels = [];
   const budgetValues = [];
   const actualValues = [];
-
   for (let i = 1; i < rows.length - 1; i++) {
     const cells = rows[i].cells;
     labels.push(cells[0].textContent);
@@ -688,7 +638,6 @@ function updateChart() {
     budgetValues.push(budgetValue);
     actualValues.push(actualValue);
   }
-
   if (spendingChart) {
     spendingChart.data.labels = labels;
     spendingChart.data.datasets[0].data = budgetValues;
@@ -705,7 +654,6 @@ function updatePieChart() {
   budgetCategories.forEach(cat => {
     categorySpending[cat.name] = 0;
   });
-
   for (let i = 1; i < rows.length - 1; i++) {
     const cells = rows[i].cells;
     const category = cells[0].textContent;
@@ -714,10 +662,8 @@ function updatePieChart() {
       categorySpending[category] += actualSpending;
     }
   }
-
   const labels = Object.keys(categorySpending);
   const data = Object.values(categorySpending);
-
   if (pieChart) {
     pieChart.data.labels = labels;
     pieChart.data.datasets[0].data = data;
@@ -735,42 +681,29 @@ function showNotification(message) {
   }, 2000);
 }
 
-/* 
-   Updated modal approach: 
-   - Display modal as flex (centered)
-   - Add 'modal-open' class to body to prevent background scroll
-*/
 function customConfirm(message) {
   return new Promise(resolve => {
     const modal = document.getElementById("modal");
     const modalMessage = document.getElementById("modal-message");
     const confirmBtn = document.getElementById("modal-confirm");
     const cancelBtn = document.getElementById("modal-cancel");
-
     modalMessage.textContent = message;
-
-    // Show the modal and lock background scroll
     modal.style.display = "flex";
     document.body.classList.add("modal-open");
-
     function cleanup() {
       modal.style.display = "none";
       document.body.classList.remove("modal-open");
-
       confirmBtn.removeEventListener("click", onConfirm);
       cancelBtn.removeEventListener("click", onCancel);
     }
-
     function onConfirm() {
       cleanup();
       resolve(true);
     }
-
     function onCancel() {
       cleanup();
       resolve(false);
     }
-
     confirmBtn.addEventListener("click", onConfirm);
     cancelBtn.addEventListener("click", onCancel);
   });
