@@ -1,4 +1,6 @@
-/* General Styles */
+/*-------------------------------------------------------------
+   General Styles
+-------------------------------------------------------------*/
 body {
     font-family: 'Roboto', sans-serif;
     margin: 0;
@@ -7,7 +9,7 @@ body {
     color: #333;
 }
 
-/* Prevent background scrolling when modal is open (optional) */
+/* Prevent background scrolling when modal is open */
 body.modal-open {
     overflow: hidden;
 }
@@ -18,7 +20,9 @@ h1, h2 {
     color: #222;
 }
 
-/* Notification Styles */
+/*-------------------------------------------------------------
+   Notification Styles
+-------------------------------------------------------------*/
 #notification {
     position: fixed;
     top: 20px;
@@ -36,7 +40,9 @@ h1, h2 {
     opacity: 1;
 }
 
-/* Card containers for sections */
+/*-------------------------------------------------------------
+   Card Containers
+-------------------------------------------------------------*/
 .card {
     background-color: #fff;
     border-radius: 8px;
@@ -51,7 +57,9 @@ h1, h2 {
     display: none;
 }
 
-/* Subtle style for the Manage Categories toggle button */
+/*-------------------------------------------------------------
+   Toggle Button for Manage Categories
+-------------------------------------------------------------*/
 #toggle-manage-categories {
     background: #e2e2e2;
     color: #333;
@@ -66,7 +74,9 @@ h1, h2 {
     background: #d2d2d2;
 }
 
-/* Filters styling */
+/*-------------------------------------------------------------
+   Filters Styling
+-------------------------------------------------------------*/
 .filters {
     display: flex;
     justify-content: center;
@@ -75,20 +85,9 @@ h1, h2 {
     margin-bottom: 10px;
 }
 
-/* Fix for the "Show All" button (updated) */
-.filters #toggle-expenses-button {
-    margin-top: 0;
-    display: inline-flex;      /* Use flex so we can center vertically */
-    align-items: center;       /* Center text vertically */
-    justify-content: center;   /* Center text horizontally */
-    height: 36px;
-    padding: 0 12px;           /* Horizontal padding only */
-    font-size: 14px;
-    border-radius: 4px;
-    line-height: normal;       /* Ensure text isn’t squished */
-}
-
-/* Form group styling */
+/*-------------------------------------------------------------
+   Form Group Styling
+-------------------------------------------------------------*/
 .form-group {
     margin: 10px auto;
     max-width: 300px;
@@ -96,7 +95,9 @@ h1, h2 {
     flex-direction: column;
 }
 
-/* Inputs and buttons */
+/*-------------------------------------------------------------
+   Inputs & Buttons
+-------------------------------------------------------------*/
 input, select, button {
     padding: 8px;
     font-size: 16px;
@@ -104,7 +105,6 @@ input, select, button {
     border-radius: 4px;
 }
 
-/* Button styles */
 button {
     background-color: #1d72b8;
     color: #fff;
@@ -120,12 +120,16 @@ button:active {
     transform: scale(0.98);
 }
 
-/* Table Container: Enable Horizontal Scrolling */
+/*-------------------------------------------------------------
+   Table Container
+-------------------------------------------------------------*/
 #budget-section, #expenses-section {
     overflow-x: auto;
 }
 
-/* Table Styles */
+/*-------------------------------------------------------------
+   Table Styles
+-------------------------------------------------------------*/
 table {
     width: 100%;
     min-width: 800px;
@@ -133,7 +137,6 @@ table {
     margin: 10px 0;
 }
 
-/* Table Cells */
 th, td {
     border: 1px solid #ddd;
     padding: 10px 12px;
@@ -142,7 +145,6 @@ th, td {
     vertical-align: middle;
 }
 
-/* Header row styling */
 th {
     background-color: #f1f1f1;
     font-weight: 500;
@@ -156,7 +158,9 @@ th:nth-child(5), td:nth-child(5) {
     text-align: center;
 }
 
-/* Sticky Category Column */
+/*-------------------------------------------------------------
+   Sticky Category Column
+-------------------------------------------------------------*/
 #budget-table th:nth-child(1),
 #budget-table td:nth-child(1),
 #expenses-table th:nth-child(2),
@@ -169,12 +173,16 @@ th:nth-child(5), td:nth-child(5) {
     border-right: 2px solid #ddd;
 }
 
-/* Hover effect on table rows */
+/*-------------------------------------------------------------
+   Hover Effect on Table Rows
+-------------------------------------------------------------*/
 tr:hover {
     background-color: #f8f8f8;
 }
 
-/* Budget Status Colors */
+/*-------------------------------------------------------------
+   Budget Status Colors
+-------------------------------------------------------------*/
 .over-budget {
     background-color: #ff3b30 !important;
 }
@@ -185,7 +193,9 @@ tr:hover {
     background-color: #34c759 !important;
 }
 
-/* Highlight animation for Actual (Week) total */
+/*-------------------------------------------------------------
+   Highlight Animation for Actual (Week) Total
+-------------------------------------------------------------*/
 .highlight-week {
     animation: highlightFlash 1.5s ease-out;
 }
@@ -194,7 +204,9 @@ tr:hover {
     100% { background-color: transparent; }
 }
 
-/* Container around the chart */
+/*-------------------------------------------------------------
+   Chart Container
+-------------------------------------------------------------*/
 .chart-container {
     position: relative;
     width: 100%;
@@ -202,7 +214,9 @@ tr:hover {
     margin: 0 auto;
 }
 
-/* Mobile chart adjustments */
+/*-------------------------------------------------------------
+   Mobile Chart Adjustments
+-------------------------------------------------------------*/
 @media (max-width: 768px) and (orientation: portrait) {
     .chart-container {
         height: 300px;
@@ -214,7 +228,9 @@ tr:hover {
     }
 }
 
-/* Mobile adjustments for tables and buttons */
+/*-------------------------------------------------------------
+   Mobile Adjustments for Tables & Buttons
+-------------------------------------------------------------*/
 @media screen and (max-width: 768px) {
     button {
         padding: 12px;
@@ -236,39 +252,41 @@ tr:hover {
     }
 }
 
-/* Total row styling */
+/*-------------------------------------------------------------
+   Total Row Styling
+-------------------------------------------------------------*/
 .total-row {
     font-weight: bold;
     background-color: #f0f0f0;
 }
 
+/*-------------------------------------------------------------
+   Editing Mode for Add Expense Section
+-------------------------------------------------------------*/
 #add-expense-section.editing-mode {
     border: 2px solid #ff9900;
     box-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
     animation: pulse 1.5s infinite alternate;
 }
-
 @keyframes pulse {
     0% { box-shadow: 0 0 10px rgba(255, 153, 0, 0.5); }
     100% { box-shadow: 0 0 15px rgba(255, 153, 0, 0.8); }
 }
 
-/* Manage Categories: stacked inputs for name/budget */
+/*-------------------------------------------------------------
+   Manage Categories: Form Group & List
+-------------------------------------------------------------*/
 #manage-categories .form-group {
     margin: 10px auto;
     max-width: 300px;
     display: flex;
     flex-direction: column;
 }
-
-/* Force each input to fill 100% width */
 #new-category-name,
 #new-category-monthly {
     width: 100%;
     box-sizing: border-box;
 }
-
-/* The category list remains in a 3-column grid */
 #category-list {
     list-style: none;
     padding: 0;
@@ -276,7 +294,7 @@ tr:hover {
 }
 #category-list li {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto auto auto;
     align-items: center;
     gap: 8px;
     margin: 8px 0;
@@ -286,11 +304,13 @@ tr:hover {
     margin-top: 0;
 }
 
-/* Collapsible Sections by Clicking the Heading */
+/*-------------------------------------------------------------
+   Collapsible Sections
+-------------------------------------------------------------*/
 .collapsible-header {
     position: relative;
     cursor: pointer;
-    margin-bottom: 0; /* remove extra space under heading */
+    margin-bottom: 0;
     padding-bottom: 10px;
 }
 .collapsible-header::after {
@@ -310,7 +330,9 @@ tr:hover {
     display: none;
 }
 
-/* Modal Styles for Centering */
+/*-------------------------------------------------------------
+   Modal Styles
+-------------------------------------------------------------*/
 .modal {
     position: fixed;
     top: 0;
@@ -319,7 +341,7 @@ tr:hover {
     height: 100%;
     background-color: rgba(0,0,0,0.4);
     z-index: 2000;
-    display: none; /* hidden by default; set to flex in JS */
+    display: none;
     justify-content: center;
     align-items: center;
 }
@@ -339,13 +361,12 @@ tr:hover {
     justify-content: space-around;
 }
 
-/*
-   Center "Edit" and "Delete" buttons side by side in the Action column,
-   ensuring same size and spacing.
-*/
+/*-------------------------------------------------------------
+   Expense Action Buttons in Table
+-------------------------------------------------------------*/
 #expenses-table td:nth-child(5) {
     text-align: center;
-    white-space: nowrap; /* keep them on one line */
+    white-space: nowrap;
 }
 #expenses-table td:nth-child(5) button {
     display: inline-flex;
@@ -357,32 +378,76 @@ tr:hover {
     box-sizing: border-box;
 }
 
-/*
-   Make "Add Expense/Update Expense" and "Cancel Edit"
-   the same size and on the same baseline in the Add Expense section.
-*/
+/*-------------------------------------------------------------
+   Add/Update Expense Buttons
+-------------------------------------------------------------*/
 #add-expense-section {
-    text-align: center; /* center the buttons horizontally */
+    text-align: center;
 }
 #add-expense-button,
 #cancel-edit-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 140px;  /* ensure enough space for text */
+    width: 140px;
     height: 36px;
     margin: 4px;
     box-sizing: border-box;
-    white-space: nowrap; /* prevent wrapping */
+    white-space: nowrap;
 }
 
-/*
-   On mobile portrait, stack these buttons full-width to avoid awkward layout
-*/
+/*-------------------------------------------------------------
+   Mobile Adjustments for Add/Update Expense Buttons
+-------------------------------------------------------------*/
 @media (max-width: 480px) and (orientation: portrait) {
     #add-expense-button,
     #cancel-edit-button {
         width: 100%;
         margin: 6px auto;
+    }
+}
+
+/*-------------------------------------------------------------
+   Pagination Controls
+-------------------------------------------------------------*/
+#pagination-controls {
+    text-align: center;
+    margin: 10px 0;
+}
+#pagination-controls button {
+    background-color: #1d72b8;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+#pagination-controls button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/*-------------------------------------------------------------
+   Additional Mobile Tweaks
+-------------------------------------------------------------*/
+@media screen and (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    h1, h2 {
+        font-size: 1.4em;
+    }
+    #expenses-table, #budget-table {
+        font-size: 12px;
+    }
+    button, input, select {
+        font-size: 14px;
+        padding: 8px;
+    }
+    #pagination-controls button {
+        padding: 10px 15px;
+        font-size: 16px;
     }
 }
