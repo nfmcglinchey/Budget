@@ -1,4 +1,6 @@
-/* Firebase Configuration */
+/*-------------------------------------------------------------
+   Firebase Configuration
+-------------------------------------------------------------*/
 const firebaseConfig = {
   apiKey: "AIzaSyA6ZFSK7jPIkiEv47yl8q-O1jh8DNvOsiI",
   authDomain: "budget-data-b9bcc.firebaseapp.com",
@@ -19,11 +21,11 @@ let chartUpdateTimeout = null;
 let showAllExpenses = false;
 let editingExpenseId = null;
 
-// Global variable for budget categories (loaded from Firebase)
+// Global variable for budget categories
 let budgetCategories = [];
 
 /*-------------------------------------------------------------
-   Category Management (stored in Firebase)
+   Category Management
 -------------------------------------------------------------*/
 async function loadCategories() {
   try {
@@ -51,7 +53,7 @@ async function loadCategories() {
       });
       renderCategoryList();
       populateExpenseCategoryDropdown();
-      loadBudget(); // Refresh the budget table based on new categories
+      loadBudget();
     });
   } catch (error) {
     console.error("Error loading categories:", error);
@@ -64,15 +66,21 @@ function renderCategoryList() {
   categoryList.innerHTML = "";
   budgetCategories.forEach((cat) => {
     const li = document.createElement("li");
-    li.textContent = `${cat.name} - $${parseFloat(cat.monthly).toFixed(2)}`;
+    // Show monthly with commas
+    const monthlyFormatted = parseFloat(cat.monthly).toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    });
+    li.textContent = `${cat.name} - ${monthlyFormatted}`;
     
+    // Edit button
     const editBtn = document.createElement("button");
     editBtn.textContent = "Edit";
     editBtn.addEventListener("click", () => {
       const newName = prompt("Edit category name:", cat.name);
       const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
       if (newName && !isNaN(newMonthly)) {
-        // Check for duplicates when name is changed
+        // Check duplicates
         if (
           newName.toLowerCase() !== cat.name.toLowerCase() &&
           budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
@@ -91,6 +99,7 @@ function renderCategoryList() {
     });
     li.appendChild(editBtn);
     
+    // Delete button
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "Delete";
     deleteBtn.addEventListener("click", () => {
@@ -149,7 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Manage Categories: Add new category using Firebase with duplicate check
+  // Add new category
   document.getElementById("add-category-button").addEventListener("click", () => {
     const nameInput = document.getElementById("new-category-name");
     const monthlyInput = document.getElementById("new-category-monthly");
@@ -175,7 +184,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   });
 
-  // Toggle Manage Categories section visibility
+  // Toggle Manage Categories
   const toggleManageBtn = document.getElementById("toggle-manage-categories");
   const manageSection = document.getElementById("manage-categories");
   toggleManageBtn.addEventListener("click", () => {
@@ -186,7 +195,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Make each collapsible header clickable to expand/collapse
+  // Collapsible sections
   document.querySelectorAll('.collapsible-header').forEach(header => {
     header.addEventListener('click', () => {
       const content = header.nextElementSibling;
@@ -199,7 +208,49 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
+
+  // -------------------------
+  //  AUTO-FORMAT THE AMOUNT
+  // -------------------------
+  const expenseAmountInput = document.getElementById("expense-amount");
+  // IMPORTANT: Ensure this input is type="text" in your HTML
+  if (expenseAmountInput) {
+    expenseAmountInput.addEventListener("input", formatCurrencyInput);
+  }
 });
+
+/*-------------------------------------------------------------
+   Auto-format input as currency: typing "1523" => "$15.23"
+-------------------------------------------------------------*/
+function formatCurrencyInput(e) {
+  // Current raw value in the field (may have $ or commas)
+  let inputVal = e.target.value;
+
+  // Strip out all non-digit characters (remove $, ., commas, etc.)
+  let justNumbers = inputVal.replace(/\D/g, "");
+
+  // If empty, clear the field
+  if (!justNumbers) {
+    e.target.value = "";
+    return;
+  }
+
+  // Parse as integer
+  let num = parseInt(justNumbers, 10);
+  if (isNaN(num)) {
+    e.target.value = "";
+    return;
+  }
+
+  // Treat last two digits as cents
+  // Example: "1523" => 15.23
+  let asCurrency = (num / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+
+  e.target.value = asCurrency;
+}
 
 function setDefaultDate() {
   const dateInput = document.getElementById("expense-date");
@@ -221,6 +272,9 @@ function parseLocalDate(dateString) {
   return new Date(year, month - 1, day);
 }
 
+/*-------------------------------------------------------------
+   Budget Table
+-------------------------------------------------------------*/
 function loadBudget() {
   const budgetTable = document.getElementById("budget-table");
   if (!budgetTable) {
@@ -240,44 +294,67 @@ function loadBudget() {
   let totalWeekly = 0;
   budgetCategories.forEach(category => {
     const monthlyVal = parseFloat(category.monthly);
-    const weeklyBudget = (monthlyVal * 12 / 52).toFixed(2);
+    const weeklyVal = (monthlyVal * 12 / 52);
     totalMonthly += monthlyVal;
-    totalWeekly += parseFloat(weeklyBudget);
+    totalWeekly += weeklyVal;
+
+    const monthlyDisplay = monthlyVal.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    });
+    const weeklyDisplay = weeklyVal.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    });
+
     const row = budgetTable.insertRow();
     row.innerHTML = `
       <td>${category.name}</td>
-      <td>$${monthlyVal.toFixed(2)}</td>
-      <td>$${weeklyBudget}</td>
+      <td>${monthlyDisplay}</td>
+      <td>${weeklyDisplay}</td>
       <td class="actual-month" data-total="0">$0.00</td>
       <td class="actual-week" data-total="0">$0.00</td>
     `;
   });
   const totalRow = budgetTable.insertRow();
+  const totalMonthlyDisplay = totalMonthly.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  });
+  const totalWeeklyDisplay = totalWeekly.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  });
   totalRow.innerHTML = `
     <td><strong>Total</strong></td>
-    <td><strong>$${totalMonthly.toFixed(2)}</strong></td>
-    <td><strong>$${totalWeekly.toFixed(2)}</strong></td>
+    <td><strong>${totalMonthlyDisplay}</strong></td>
+    <td><strong>${totalWeeklyDisplay}</strong></td>
     <td class="actual-month"><strong>$0.00</strong></td>
     <td class="actual-week"><strong>$0.00</strong></td>
   `;
   totalRow.classList.add("total-row");
 }
 
+/*-------------------------------------------------------------
+   Add/Update Expense
+-------------------------------------------------------------*/
 async function addExpense() {
   try {
     const date = document.getElementById("expense-date")?.value;
     const category = document.getElementById("expense-category")?.value;
     const description = document.getElementById("expense-description")?.value.trim();
-    const amount = parseFloat(document.getElementById("expense-amount")?.value);
     
-    if (!date || !category || !description || isNaN(amount) || amount <= 0) {
+    // The field now looks like "$15.23", so remove non-numerics to parse it
+    const rawAmount = document.getElementById("expense-amount").value;
+    const numericVal = parseFloat(rawAmount.replace(/[^0-9.]/g, "")); 
+    // numericVal will be 15.23 if user typed "$15.23"
+
+    if (!date || !category || !description || isNaN(numericVal) || numericVal <= 0) {
       showNotification("Please enter valid details.");
       return;
     }
     
-    // Optional: Add additional duplicate checks or validation as needed
-
-    const expenseData = { date, category, description, amount };
+    const expenseData = { date, category, description, amount: numericVal };
 
     if (editingExpenseId) {
       await db.ref("expenses/" + editingExpenseId).update(expenseData);
@@ -309,7 +386,14 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("expense-date").value = date;
   document.getElementById("expense-category").value = category;
   document.getElementById("expense-description").value = description;
-  document.getElementById("expense-amount").value = amount;
+  
+  // Convert the stored numeric "amount" back to a masked string
+  const masked = amount.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+  document.getElementById("expense-amount").value = masked;
+
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
   const addExpenseSection = document.getElementById("add-expense-section");
@@ -327,6 +411,9 @@ function cancelEdit() {
   resetExpenseForm();
 }
 
+/*-------------------------------------------------------------
+   Load Expenses
+-------------------------------------------------------------*/
 function loadExpenses() {
   const expensesTable = document.getElementById("expenses-table");
   if (!expensesTable) {
@@ -390,15 +477,24 @@ function loadExpenses() {
       const dateCell = document.createElement("td");
       dateCell.textContent = formattedDate;
       row.appendChild(dateCell);
+
       const categoryCell = document.createElement("td");
       categoryCell.textContent = exp.category;
       row.appendChild(categoryCell);
+
       const descCell = document.createElement("td");
       descCell.textContent = exp.description || "—";
       row.appendChild(descCell);
+
+      // Show commas (e.g. "$1,234.56")
       const amountCell = document.createElement("td");
-      amountCell.textContent = `$${exp.amount.toFixed(2)}`;
+      const formattedAmt = exp.amount.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      });
+      amountCell.textContent = formattedAmt;
       row.appendChild(amountCell);
+
       const actionCell = document.createElement("td");
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
@@ -407,6 +503,7 @@ function loadExpenses() {
         editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
       });
       actionCell.appendChild(editBtn);
+
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
@@ -419,6 +516,7 @@ function loadExpenses() {
       });
       actionCell.appendChild(deleteBtn);
       row.appendChild(actionCell);
+
       expensesTable.appendChild(row);
     });
     updateTotalRow();
@@ -428,6 +526,9 @@ function loadExpenses() {
   db.ref("expenses").on("value", expensesListener);
 }
 
+/*-------------------------------------------------------------
+   Delete Expense
+-------------------------------------------------------------*/
 function deleteExpense(expenseId) {
   if (!expenseId) {
     console.error("Invalid expense ID");
@@ -444,6 +545,9 @@ function deleteExpense(expenseId) {
     });
 }
 
+/*-------------------------------------------------------------
+   Budget Totals & Actuals
+-------------------------------------------------------------*/
 function resetBudgetActuals() {
   const budgetTable = document.getElementById("budget-table");
   const rows = budgetTable.getElementsByTagName("tr");
@@ -471,10 +575,15 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
         let currentMonthTotal = parseFloat(actualMonthCell.getAttribute('data-total')) || 0;
         const newMonthTotal = currentMonthTotal + amount;
         actualMonthCell.setAttribute('data-total', newMonthTotal);
-        const monthlyBudget = parseFloat(row.cells[1].textContent.replace("$", ""));
+        const monthlyBudget = parseFloat(
+          row.cells[1].textContent.replace(/[^0-9.]/g, "")
+        ) || 0;
         applyBudgetColors(actualMonthCell, newMonthTotal, monthlyBudget);
+
         if (newMonthTotal > monthlyBudget) {
-          actualMonthCell.innerHTML = `$${newMonthTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
+          actualMonthCell.innerHTML = `
+            $${newMonthTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>
+          `;
         } else {
           actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
         }
@@ -483,10 +592,15 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
         let currentWeekTotal = parseFloat(actualWeekCell.getAttribute('data-total')) || 0;
         const newWeekTotal = currentWeekTotal + amount;
         actualWeekCell.setAttribute('data-total', newWeekTotal);
-        const weeklyBudget = parseFloat(row.cells[2].textContent.replace("$", ""));
+        const weeklyBudget = parseFloat(
+          row.cells[2].textContent.replace(/[^0-9.]/g, "")
+        ) || 0;
         applyBudgetColors(actualWeekCell, newWeekTotal, weeklyBudget);
+
         if (newWeekTotal > weeklyBudget) {
-          actualWeekCell.innerHTML = `$${newWeekTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
+          actualWeekCell.innerHTML = `
+            $${newWeekTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>
+          `;
         } else {
           actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
         }
@@ -533,6 +647,9 @@ function applyBudgetColors(cell, actual, budget) {
   }
 }
 
+/*-------------------------------------------------------------
+   Filters
+-------------------------------------------------------------*/
 function populateFilters() {
   const monthSelect = document.getElementById("filter-month");
   const yearSelect = document.getElementById("filter-year");
@@ -563,6 +680,9 @@ function populateFilters() {
   loadExpenses();
 }
 
+/*-------------------------------------------------------------
+   Charts
+-------------------------------------------------------------*/
 function initializeChart() {
   const ctx = document.getElementById("chart-canvas").getContext("2d");
   spendingChart = new Chart(ctx, {
@@ -633,7 +753,7 @@ function updateChart() {
   for (let i = 1; i < rows.length - 1; i++) {
     const cells = rows[i].cells;
     labels.push(cells[0].textContent);
-    const budgetValue = parseFloat(cells[1].textContent.replace("$", "")) || 0;
+    const budgetValue = parseFloat(cells[1].textContent.replace(/[^0-9.]/g, "")) || 0;
     const actualValue = parseFloat(cells[3].getAttribute("data-total")) || 0;
     budgetValues.push(budgetValue);
     actualValues.push(actualValue);
@@ -671,6 +791,9 @@ function updatePieChart() {
   }
 }
 
+/*-------------------------------------------------------------
+   Notifications & Confirmations
+-------------------------------------------------------------*/
 function showNotification(message) {
   const notification = document.getElementById("notification");
   if (!notification) return;
