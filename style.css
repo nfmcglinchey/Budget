@@ -75,6 +75,19 @@ h1, h2 {
     margin-bottom: 10px;
 }
 
+/* Fix for the "Show All" button (updated) */
+.filters #toggle-expenses-button {
+    margin-top: 0;
+    display: inline-flex;      /* Use flex so we can center vertically */
+    align-items: center;       /* Center text vertically */
+    justify-content: center;   /* Center text horizontally */
+    height: 36px;
+    padding: 0 12px;           /* Horizontal padding only */
+    font-size: 14px;
+    border-radius: 4px;
+    line-height: normal;       /* Ensure text isn’t squished */
+}
+
 /* Form group styling */
 .form-group {
     margin: 10px auto;
@@ -363,8 +376,8 @@ tr:hover {
     white-space: nowrap; /* prevent wrapping */
 }
 
-/* 
-   On mobile portrait, stack these buttons full-width to avoid awkward layout 
+/*
+   On mobile portrait, stack these buttons full-width to avoid awkward layout
 */
 @media (max-width: 480px) and (orientation: portrait) {
     #add-expense-button,
