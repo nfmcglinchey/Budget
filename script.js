@@ -1,6 +1,4 @@
-/*-------------------------------------------------------------
-   Firebase Configuration
--------------------------------------------------------------*/
+/* Firebase Configuration (unchanged) */
 const firebaseConfig = {
   apiKey: "AIzaSyA6ZFSK7jPIkiEv47yl8q-O1jh8DNvOsiI",
   authDomain: "budget-data-b9bcc.firebaseapp.com",
@@ -14,18 +12,20 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+/* Global Configuration */
+const currency = 'USD';
+let currentPage = 1;
+const pageSize = 5;
+
 let expensesListener = null;
 let spendingChart;
 let pieChart;
 let chartUpdateTimeout = null;
-let showAllExpenses = false;
 let editingExpenseId = null;
-
-// Global variable for budget categories
 let budgetCategories = [];
 
 /*-------------------------------------------------------------
-   Category Management
+   CATEGORY MANAGEMENT FUNCTIONS
 -------------------------------------------------------------*/
 async function loadCategories() {
   try {
@@ -57,7 +57,7 @@ async function loadCategories() {
     });
   } catch (error) {
     console.error("Error loading categories:", error);
-    showNotification("Error loading categories.");
+    showNotification("Error loading categories: " + error.message);
   }
 }
 
@@ -66,21 +66,18 @@ function renderCategoryList() {
   categoryList.innerHTML = "";
   budgetCategories.forEach((cat) => {
     const li = document.createElement("li");
-    // Show monthly with commas
     const monthlyFormatted = parseFloat(cat.monthly).toLocaleString('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: currency
     });
     li.textContent = `${cat.name} - ${monthlyFormatted}`;
     
-    // Edit button
     const editBtn = document.createElement("button");
     editBtn.textContent = "Edit";
     editBtn.addEventListener("click", () => {
       const newName = prompt("Edit category name:", cat.name);
       const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
       if (newName && !isNaN(newMonthly)) {
-        // Check duplicates
         if (
           newName.toLowerCase() !== cat.name.toLowerCase() &&
           budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
@@ -91,7 +88,7 @@ function renderCategoryList() {
         db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly })
           .catch(error => {
             console.error("Error updating category:", error);
-            showNotification("Error updating category.");
+            showNotification("Error updating category: " + error.message);
           });
       } else {
         showNotification("Invalid input for editing category.");
@@ -99,7 +96,6 @@ function renderCategoryList() {
     });
     li.appendChild(editBtn);
     
-    // Delete button
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "Delete";
     deleteBtn.addEventListener("click", () => {
@@ -108,7 +104,7 @@ function renderCategoryList() {
           db.ref("categories/" + cat.id).remove()
             .catch(error => {
               console.error("Error deleting category:", error);
-              showNotification("Error deleting category.");
+              showNotification("Error deleting category: " + error.message);
             });
         }
       });
@@ -131,149 +127,40 @@ function populateExpenseCategoryDropdown() {
 }
 
 /*-------------------------------------------------------------
-   Main Functionality
+   POPULATE FILTERS FUNCTION (RE-ADDED)
 -------------------------------------------------------------*/
-document.addEventListener("DOMContentLoaded", function () {
-  setTimeout(setDefaultDate, 500);
-  loadCategories();
-  populateFilters();
-  initializeChart();
-  initializePieChart();
-
-  document.getElementById("add-expense-button").addEventListener("click", addExpense);
-
-  const cancelEditButton = document.getElementById("cancel-edit-button");
-  if (cancelEditButton) {
-    cancelEditButton.addEventListener("click", cancelEdit);
-  }
-
-  document.getElementById("filter-month").addEventListener("change", loadExpenses);
-  document.getElementById("filter-year").addEventListener("change", loadExpenses);
-
-  const toggleButton = document.getElementById("toggle-expenses-button");
-  if (toggleButton) {
-    toggleButton.addEventListener("click", () => {
-      showAllExpenses = !showAllExpenses;
-      loadExpenses();
-    });
-  }
-
-  // Add new category
-  document.getElementById("add-category-button").addEventListener("click", () => {
-    const nameInput = document.getElementById("new-category-name");
-    const monthlyInput = document.getElementById("new-category-monthly");
-    const name = nameInput.value.trim();
-    const monthly = parseFloat(monthlyInput.value);
-    if (!name || isNaN(monthly)) {
-      showNotification("Please enter valid category name and monthly budget.");
-      return;
-    }
-    if (budgetCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
-      showNotification("Duplicate category name. Please enter a unique category.");
-      return;
-    }
-    db.ref("categories").push({ name: name, monthly: monthly })
-      .then(() => {
-        showNotification("Category added.");
-        nameInput.value = "";
-        monthlyInput.value = "";
-      })
-      .catch(error => {
-        console.error("Error adding category:", error);
-        showNotification("Error adding category.");
-      });
-  });
-
-  // Toggle Manage Categories
-  const toggleManageBtn = document.getElementById("toggle-manage-categories");
-  const manageSection = document.getElementById("manage-categories");
-  toggleManageBtn.addEventListener("click", () => {
-    if (manageSection.style.display === "none" || manageSection.style.display === "") {
-      manageSection.style.display = "block";
-    } else {
-      manageSection.style.display = "none";
-    }
-  });
-
-  // Collapsible sections
-  document.querySelectorAll('.collapsible-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const content = header.nextElementSibling;
-      if (content.style.display === "none" || content.style.display === "") {
-        content.style.display = "block";
-        header.classList.add("expanded");
-      } else {
-        content.style.display = "none";
-        header.classList.remove("expanded");
-      }
-    });
-  });
-
-  // -------------------------
-  //  AUTO-FORMAT THE AMOUNT
-  // -------------------------
-  const expenseAmountInput = document.getElementById("expense-amount");
-  // IMPORTANT: Ensure this input is type="text" in your HTML
-  if (expenseAmountInput) {
-    expenseAmountInput.addEventListener("input", formatCurrencyInput);
-  }
-});
-
-/*-------------------------------------------------------------
-   Auto-format input as currency: typing "1523" => "$15.23"
--------------------------------------------------------------*/
-function formatCurrencyInput(e) {
-  // Current raw value in the field (may have $ or commas)
-  let inputVal = e.target.value;
-
-  // Strip out all non-digit characters (remove $, ., commas, etc.)
-  let justNumbers = inputVal.replace(/\D/g, "");
-
-  // If empty, clear the field
-  if (!justNumbers) {
-    e.target.value = "";
-    return;
-  }
-
-  // Parse as integer
-  let num = parseInt(justNumbers, 10);
-  if (isNaN(num)) {
-    e.target.value = "";
-    return;
-  }
-
-  // Treat last two digits as cents
-  // Example: "1523" => 15.23
-  let asCurrency = (num / 100).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-
-  e.target.value = asCurrency;
-}
-
-function setDefaultDate() {
-  const dateInput = document.getElementById("expense-date");
-  if (!dateInput) {
-    console.error("Date input field not found.");
+function populateFilters() {
+  const monthSelect = document.getElementById("filter-month");
+  const yearSelect = document.getElementById("filter-year");
+  if (!monthSelect || !yearSelect) {
+    console.error("Dropdowns not found.");
     return;
   }
   const today = new Date();
-  dateInput.value = today.toISOString().slice(0, 10);
-}
-
-function formatDate(isoDate) {
-  const [year, month, day] = isoDate.split("-");
-  return `${month}/${day}/${year}`;
-}
-
-function parseLocalDate(dateString) {
-  const [year, month, day] = dateString.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+  const months = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+  monthSelect.innerHTML = months
+    .map((month, index) => {
+      const isSelected = (index + 1 === currentMonth) ? "selected" : "";
+      return `<option value="${index + 1}" ${isSelected}>${month}</option>`;
+    })
+    .join("");
+  yearSelect.innerHTML = [...Array(11)]
+    .map((_, i) => {
+      const year = currentYear - i;
+      const isSelected = (year === currentYear) ? "selected" : "";
+      return `<option value="${year}" ${isSelected}>${year}</option>`;
+    })
+    .join("");
+  loadExpenses();
 }
 
 /*-------------------------------------------------------------
-   Budget Table
+   BUDGET TABLE FUNCTIONS
 -------------------------------------------------------------*/
 function loadBudget() {
   const budgetTable = document.getElementById("budget-table");
@@ -300,11 +187,11 @@ function loadBudget() {
 
     const monthlyDisplay = monthlyVal.toLocaleString('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: currency
     });
     const weeklyDisplay = weeklyVal.toLocaleString('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: currency
     });
 
     const row = budgetTable.insertRow();
@@ -319,11 +206,11 @@ function loadBudget() {
   const totalRow = budgetTable.insertRow();
   const totalMonthlyDisplay = totalMonthly.toLocaleString('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: currency
   });
   const totalWeeklyDisplay = totalWeekly.toLocaleString('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: currency
   });
   totalRow.innerHTML = `
     <td><strong>Total</strong></td>
@@ -336,93 +223,13 @@ function loadBudget() {
 }
 
 /*-------------------------------------------------------------
-   Add/Update Expense
--------------------------------------------------------------*/
-async function addExpense() {
-  try {
-    const date = document.getElementById("expense-date")?.value;
-    const category = document.getElementById("expense-category")?.value;
-    const description = document.getElementById("expense-description")?.value.trim();
-    
-    // The field now looks like "$15.23", so remove non-numerics to parse it
-    const rawAmount = document.getElementById("expense-amount").value;
-    const numericVal = parseFloat(rawAmount.replace(/[^0-9.]/g, "")); 
-    // numericVal will be 15.23 if user typed "$15.23"
-
-    if (!date || !category || !description || isNaN(numericVal) || numericVal <= 0) {
-      showNotification("Please enter valid details.");
-      return;
-    }
-    
-    const expenseData = { date, category, description, amount: numericVal };
-
-    if (editingExpenseId) {
-      await db.ref("expenses/" + editingExpenseId).update(expenseData);
-      showNotification("Expense updated successfully");
-    } else {
-      await db.ref("expenses").push(expenseData);
-      showNotification("Expense added successfully");
-    }
-    resetExpenseForm();
-  } catch (error) {
-    console.error("Error processing expense:", error);
-    showNotification("Error processing expense. Please try again.");
-  }
-}
-
-function resetExpenseForm() {
-  document.getElementById("expense-date").value = new Date().toISOString().slice(0,10);
-  document.getElementById("expense-category").selectedIndex = 0;
-  document.getElementById("expense-description").value = "";
-  document.getElementById("expense-amount").value = "";
-  editingExpenseId = null;
-  document.getElementById("add-expense-button").textContent = "Add Expense";
-  document.getElementById("cancel-edit-button").style.display = "none";
-  document.getElementById("add-expense-section").classList.remove("editing-mode");
-}
-
-function editExpense(expenseId, date, category, description, amount) {
-  editingExpenseId = expenseId;
-  document.getElementById("expense-date").value = date;
-  document.getElementById("expense-category").value = category;
-  document.getElementById("expense-description").value = description;
-  
-  // Convert the stored numeric "amount" back to a masked string
-  const masked = amount.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-  document.getElementById("expense-amount").value = masked;
-
-  document.getElementById("add-expense-button").textContent = "Update Expense";
-  document.getElementById("cancel-edit-button").style.display = "inline-block";
-  const addExpenseSection = document.getElementById("add-expense-section");
-  const collapsibleContent = addExpenseSection.querySelector('.collapsible-content');
-  if (collapsibleContent && (collapsibleContent.style.display === "none" || collapsibleContent.style.display === "")) {
-    collapsibleContent.style.display = "block";
-    const header = addExpenseSection.querySelector('.collapsible-header');
-    if (header) header.classList.add("expanded");
-  }
-  addExpenseSection.classList.add("editing-mode");
-  addExpenseSection.scrollIntoView({ behavior: "smooth" });
-}
-
-function cancelEdit() {
-  resetExpenseForm();
-}
-
-/*-------------------------------------------------------------
-   Load Expenses
+   EXPENSE FUNCTIONS & PAGINATION
 -------------------------------------------------------------*/
 function loadExpenses() {
   const expensesTable = document.getElementById("expenses-table");
   if (!expensesTable) {
     console.error("Expenses table not found");
     return;
-  }
-  const toggleButton = document.getElementById("toggle-expenses-button");
-  if (toggleButton) {
-    toggleButton.textContent = showAllExpenses ? "Show Newest 5" : "Show All";
   }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -448,7 +255,7 @@ function loadExpenses() {
     resetBudgetActuals();
     const selectedMonth = document.getElementById("filter-month")?.value;
     const selectedYear = document.getElementById("filter-year")?.value;
-    const monthlyExpenses = [];
+    let monthlyExpenses = [];
     snapshot.forEach(childSnapshot => {
       const expense = childSnapshot.val();
       const expenseDate = parseLocalDate(expense.date);
@@ -470,83 +277,129 @@ function loadExpenses() {
       }
     });
     monthlyExpenses.sort((a, b) => b.parsedDate - a.parsedDate);
-    const finalExpenses = showAllExpenses ? monthlyExpenses : monthlyExpenses.slice(0, 5);
+    const totalPages = Math.ceil(monthlyExpenses.length / pageSize);
+    if (currentPage > totalPages) currentPage = totalPages || 1;
+    const startIndex = (currentPage - 1) * pageSize;
+    const finalExpenses = monthlyExpenses.slice(startIndex, startIndex + pageSize);
+    
     finalExpenses.forEach(exp => {
       const formattedDate = formatDate(exp.date);
       const row = document.createElement("tr");
-      const dateCell = document.createElement("td");
-      dateCell.textContent = formattedDate;
-      row.appendChild(dateCell);
-
-      const categoryCell = document.createElement("td");
-      categoryCell.textContent = exp.category;
-      row.appendChild(categoryCell);
-
-      const descCell = document.createElement("td");
-      descCell.textContent = exp.description || "—";
-      row.appendChild(descCell);
-
-      // Show commas (e.g. "$1,234.56")
-      const amountCell = document.createElement("td");
-      const formattedAmt = exp.amount.toLocaleString('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      });
-      amountCell.textContent = formattedAmt;
-      row.appendChild(amountCell);
-
-      const actionCell = document.createElement("td");
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "Edit";
-      editBtn.style.marginRight = "8px";
-      editBtn.addEventListener("click", () => {
-        editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
-      });
-      actionCell.appendChild(editBtn);
-
-      const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "Delete";
-      deleteBtn.addEventListener("click", () => {
-        customConfirm("Are you sure you want to delete this expense?")
-          .then(confirmed => {
-            if (confirmed) {
-              deleteExpense(exp.key);
-            }
-          });
-      });
-      actionCell.appendChild(deleteBtn);
-      row.appendChild(actionCell);
-
+      row.innerHTML = `
+        <td>${formattedDate}</td>
+        <td>${exp.category}</td>
+        <td>${exp.description || "—"}</td>
+        <td>${exp.amount.toLocaleString('en-US', { style: 'currency', currency: currency })}</td>
+        <td>
+          <button onclick="editExpense('${exp.key}', '${exp.date}', '${exp.category}', '${exp.description}', ${exp.amount})">Edit</button>
+          <button onclick="confirmDelete('${exp.key}')">Delete</button>
+        </td>
+      `;
       expensesTable.appendChild(row);
     });
     updateTotalRow();
     updateChartDebounced();
     updatePieChart();
+    renderPaginationControls(totalPages);
   };
   db.ref("expenses").on("value", expensesListener);
 }
 
-/*-------------------------------------------------------------
-   Delete Expense
--------------------------------------------------------------*/
-function deleteExpense(expenseId) {
-  if (!expenseId) {
-    console.error("Invalid expense ID");
-    return;
-  }
-  db.ref("expenses/" + expenseId).remove()
-    .then(() => {
-      console.log("Expense deleted successfully");
-      showNotification("Expense deleted successfully");
-    })
-    .catch(error => {
-      console.error("Error deleting expense:", error);
-      showNotification("Error deleting expense");
+function renderPaginationControls(totalPages) {
+  const container = document.getElementById("pagination-controls");
+  container.innerHTML = "";
+  if (totalPages <= 1) return;
+  
+  const prevBtn = document.createElement("button");
+  prevBtn.textContent = "Previous";
+  prevBtn.disabled = currentPage === 1;
+  prevBtn.onclick = () => { currentPage--; loadExpenses(); };
+  
+  const nextBtn = document.createElement("button");
+  nextBtn.textContent = "Next";
+  nextBtn.disabled = currentPage === totalPages;
+  nextBtn.onclick = () => { currentPage++; loadExpenses(); };
+  
+  container.appendChild(prevBtn);
+  container.appendChild(document.createTextNode(` Page ${currentPage} of ${totalPages} `));
+  container.appendChild(nextBtn);
+}
+
+function confirmDelete(expenseId) {
+  customConfirm("Are you sure you want to delete this expense?")
+    .then(confirmed => {
+      if (confirmed) {
+        deleteExpense(expenseId);
+      }
     });
 }
 
+async function addExpense() {
+  try {
+    const date = document.getElementById("expense-date")?.value;
+    const category = document.getElementById("expense-category")?.value;
+    const description = document.getElementById("expense-description")?.value.trim();
+    const rawAmount = document.getElementById("expense-amount").value;
+    const numericVal = parseFloat(rawAmount.replace(/[^0-9.]/g, ""));
+    if (!date || !category || !description || isNaN(numericVal) || numericVal <= 0) {
+      showNotification("Please enter valid details.");
+      return;
+    }
+    const expenseData = { date, category, description, amount: numericVal };
+    if (editingExpenseId) {
+      await db.ref("expenses/" + editingExpenseId).update(expenseData);
+      showNotification("Expense updated successfully");
+    } else {
+      await db.ref("expenses").push(expenseData);
+      showNotification("Expense added successfully");
+    }
+    resetExpenseForm();
+  } catch (error) {
+    console.error("Error processing expense:", error);
+    showNotification("Error processing expense: " + error.message);
+  }
+}
+
+function resetExpenseForm() {
+  document.getElementById("expense-date").value = new Date().toISOString().slice(0,10);
+  document.getElementById("expense-category").selectedIndex = 0;
+  document.getElementById("expense-description").value = "";
+  document.getElementById("expense-amount").value = "";
+  editingExpenseId = null;
+  document.getElementById("add-expense-button").textContent = "Add Expense";
+  document.getElementById("cancel-edit-button").style.display = "none";
+  document.getElementById("add-expense-section").classList.remove("editing-mode");
+}
+
+function editExpense(expenseId, date, category, description, amount) {
+  editingExpenseId = expenseId;
+  document.getElementById("expense-date").value = date;
+  document.getElementById("expense-category").value = category;
+  document.getElementById("expense-description").value = description;
+  const masked = amount.toLocaleString("en-US", {
+    style: "currency",
+    currency: currency,
+  });
+  document.getElementById("expense-amount").value = masked;
+  document.getElementById("add-expense-button").textContent = "Update Expense";
+  document.getElementById("cancel-edit-button").style.display = "inline-block";
+  const addExpenseSection = document.getElementById("add-expense-section");
+  const collapsibleContent = addExpenseSection.querySelector('.collapsible-content');
+  if (collapsibleContent && (collapsibleContent.style.display === "none" || collapsibleContent.style.display === "")) {
+    collapsibleContent.style.display = "block";
+    const header = addExpenseSection.querySelector('.collapsible-header');
+    if (header) header.classList.add("expanded");
+  }
+  addExpenseSection.classList.add("editing-mode");
+  addExpenseSection.scrollIntoView({ behavior: "smooth" });
+}
+
+function cancelEdit() {
+  resetExpenseForm();
+}
+
 /*-------------------------------------------------------------
-   Budget Totals & Actuals
+   BUDGET ACTUALS & CHART FUNCTIONS
 -------------------------------------------------------------*/
 function resetBudgetActuals() {
   const budgetTable = document.getElementById("budget-table");
@@ -579,11 +432,8 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
           row.cells[1].textContent.replace(/[^0-9.]/g, "")
         ) || 0;
         applyBudgetColors(actualMonthCell, newMonthTotal, monthlyBudget);
-
         if (newMonthTotal > monthlyBudget) {
-          actualMonthCell.innerHTML = `
-            $${newMonthTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>
-          `;
+          actualMonthCell.innerHTML = `$${newMonthTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
         } else {
           actualMonthCell.textContent = `$${newMonthTotal.toFixed(2)}`;
         }
@@ -596,11 +446,8 @@ function updateBudgetTotals(category, amount, expenseDate, type) {
           row.cells[2].textContent.replace(/[^0-9.]/g, "")
         ) || 0;
         applyBudgetColors(actualWeekCell, newWeekTotal, weeklyBudget);
-
         if (newWeekTotal > weeklyBudget) {
-          actualWeekCell.innerHTML = `
-            $${newWeekTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>
-          `;
+          actualWeekCell.innerHTML = `$${newWeekTotal.toFixed(2)} <span class="warning-icon" title="Over Budget!">⚠️</span>`;
         } else {
           actualWeekCell.textContent = `$${newWeekTotal.toFixed(2)}`;
         }
@@ -648,40 +495,7 @@ function applyBudgetColors(cell, actual, budget) {
 }
 
 /*-------------------------------------------------------------
-   Filters
--------------------------------------------------------------*/
-function populateFilters() {
-  const monthSelect = document.getElementById("filter-month");
-  const yearSelect = document.getElementById("filter-year");
-  if (!monthSelect || !yearSelect) {
-    console.error("Dropdowns not found.");
-    return;
-  }
-  const today = new Date();
-  const currentMonth = today.getMonth() + 1;
-  const currentYear = today.getFullYear();
-  const months = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
-  ];
-  monthSelect.innerHTML = months
-    .map((month, index) => {
-      const isSelected = (index + 1 === currentMonth) ? "selected" : "";
-      return `<option value="${index + 1}" ${isSelected}>${month}</option>`;
-    })
-    .join("");
-  yearSelect.innerHTML = [...Array(11)]
-    .map((_, i) => {
-      const year = currentYear - i;
-      const isSelected = (year === currentYear) ? "selected" : "";
-      return `<option value="${year}" ${isSelected}>${year}</option>`;
-    })
-    .join("");
-  loadExpenses();
-}
-
-/*-------------------------------------------------------------
-   Charts
+   CHART FUNCTIONS
 -------------------------------------------------------------*/
 function initializeChart() {
   const ctx = document.getElementById("chart-canvas").getContext("2d");
@@ -792,7 +606,7 @@ function updatePieChart() {
 }
 
 /*-------------------------------------------------------------
-   Notifications & Confirmations
+   NOTIFICATIONS & MODAL FUNCTIONS
 -------------------------------------------------------------*/
 function showNotification(message) {
   const notification = document.getElementById("notification");
@@ -831,3 +645,83 @@ function customConfirm(message) {
     cancelBtn.addEventListener("click", onCancel);
   });
 }
+
+/*-------------------------------------------------------------
+   DATE & CURRENCY UTILITIES
+-------------------------------------------------------------*/
+function setDefaultDate() {
+  const dateInput = document.getElementById("expense-date");
+  if (!dateInput) {
+    console.error("Date input field not found.");
+    return;
+  }
+  const today = new Date();
+  dateInput.value = today.toISOString().slice(0, 10);
+}
+
+function formatDate(isoDate) {
+  const [year, month, day] = isoDate.split("-");
+  return `${month}/${day}/${year}`;
+}
+
+function parseLocalDate(dateString) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatCurrencyInput(e) {
+  let inputVal = e.target.value;
+  let justNumbers = inputVal.replace(/\D/g, "");
+  if (!justNumbers) {
+    e.target.value = "";
+    return;
+  }
+  let num = parseInt(justNumbers, 10);
+  if (isNaN(num)) {
+    e.target.value = "";
+    return;
+  }
+  let asCurrency = (num / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: currency,
+  });
+  e.target.value = asCurrency;
+}
+
+/*-------------------------------------------------------------
+   INITIALIZATION
+-------------------------------------------------------------*/
+document.addEventListener("DOMContentLoaded", function () {
+  setTimeout(setDefaultDate, 500);
+  loadCategories();
+  populateFilters();
+  initializeChart();
+  initializePieChart();
+  document.getElementById("add-expense-button").addEventListener("click", addExpense);
+  const cancelEditButton = document.getElementById("cancel-edit-button");
+  if (cancelEditButton) {
+    cancelEditButton.addEventListener("click", cancelEdit);
+  }
+  document.getElementById("filter-month").addEventListener("change", () => { currentPage = 1; loadExpenses(); });
+  document.getElementById("filter-year").addEventListener("change", () => { currentPage = 1; loadExpenses(); });
+  document.getElementById("toggle-manage-categories").addEventListener("click", () => {
+    const manageSection = document.getElementById("manage-categories");
+    manageSection.style.display = (manageSection.style.display === "none" || manageSection.style.display === "") ? "block" : "none";
+  });
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const content = header.nextElementSibling;
+      if (content.style.display === "none" || content.style.display === "") {
+        content.style.display = "block";
+        header.classList.add("expanded");
+      } else {
+        content.style.display = "none";
+        header.classList.remove("expanded");
+      }
+    });
+  });
+  const expenseAmountInput = document.getElementById("expense-amount");
+  if (expenseAmountInput) {
+    expenseAmountInput.addEventListener("input", formatCurrencyInput);
+  }
+});
