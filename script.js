@@ -404,6 +404,7 @@ function loadExpenses() {
       row.appendChild(amountCell);
       
       const actionCell = document.createElement("td");
+      
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
       editBtn.style.marginRight = "8px";
@@ -411,8 +412,10 @@ function loadExpenses() {
         editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
       });
       actionCell.appendChild(editBtn);
+      
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
+      // Standard click deletion
       deleteBtn.addEventListener("click", () => {
         customConfirm("Are you sure you want to delete this expense?")
           .then(confirmed => {
@@ -422,10 +425,11 @@ function loadExpenses() {
           });
       });
       actionCell.appendChild(deleteBtn);
+      
       row.appendChild(actionCell);
       
-      // Attach swipe-to-delete functionality
-      attachSwipeToDelete(row, exp.key);
+      // Attach swipe-to-delete events to the delete button only
+      attachSwipeToDeleteOnButton(deleteBtn, row, exp.key);
       
       expensesTable.appendChild(row);
     });
@@ -717,24 +721,65 @@ function customConfirm(message) {
   });
 }
 
-// New: Attach swipe-to-delete functionality for expense rows on mobile
-function attachSwipeToDelete(row, expenseId) {
+// New: Attach swipe-to-delete functionality to the delete button.
+// Tapping the button triggers the normal confirm flow,
+// but dragging it will slide the entire row.
+function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   let touchStartX = 0;
-  let touchEndX = 0;
+  let touchDeltaX = 0;
+  let dragging = false;
+  const threshold = 100; // pixels
 
-  row.addEventListener('touchstart', function(e) {
+  deleteBtn.addEventListener('touchstart', function(e) {
     touchStartX = e.changedTouches[0].screenX;
+    dragging = false;
+    row.style.transition = '';
   });
 
-  row.addEventListener('touchend', function(e) {
-    touchEndX = e.changedTouches[0].screenX;
-    if (touchStartX - touchEndX > 50) { // if swipe left greater than 50px
-      customConfirm("Swipe delete: Are you sure you want to delete this expense?")
-        .then(confirmed => {
-          if (confirmed) {
-            deleteExpense(expenseId);
-          }
-        });
+  deleteBtn.addEventListener('touchmove', function(e) {
+    const currentX = e.changedTouches[0].screenX;
+    touchDeltaX = currentX - touchStartX;
+    if (Math.abs(touchDeltaX) > 10) {
+      dragging = true;
     }
+    // Only allow left swipe
+    if (touchDeltaX < 0) {
+      row.style.transform = `translateX(${touchDeltaX}px)`;
+      if (Math.abs(touchDeltaX) > threshold) {
+        if (!row.classList.contains("swipe-delete-ready")) {
+          row.classList.add("swipe-delete-ready");
+          if (window.navigator.vibrate) {
+            window.navigator.vibrate(50);
+          }
+        }
+      } else {
+        row.classList.remove("swipe-delete-ready");
+      }
+    }
+  });
+
+  deleteBtn.addEventListener('touchend', function(e) {
+    if (dragging && Math.abs(touchDeltaX) > threshold) {
+      row.style.transition = 'transform 0.2s ease-out';
+      row.style.transform = 'translateX(-100%)';
+      setTimeout(() => {
+        customConfirm("Swipe delete: Are you sure you want to delete this expense?")
+          .then(confirmed => {
+            if (confirmed) {
+              deleteExpense(expenseId);
+            } else {
+              row.style.transition = 'transform 0.2s ease-out';
+              row.style.transform = 'translateX(0)';
+              row.classList.remove("swipe-delete-ready");
+            }
+          });
+      }, 200);
+    } else {
+      row.style.transition = 'transform 0.2s ease-out';
+      row.style.transform = 'translateX(0)';
+      row.classList.remove("swipe-delete-ready");
+    }
+    dragging = false;
+    touchDeltaX = 0;
   });
 }
