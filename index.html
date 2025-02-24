@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1d72b8">
+  <!-- iOS PWA meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Budget Tracker</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+  <!-- Manifest for PWA -->
+  <link rel="manifest" href="manifest.json">
+  <!-- Main CSS -->
+  <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Budget Tracker</h1>
+
+  <!-- Toggle button to show/hide Manage Categories -->
+  <button id="toggle-manage-categories">Manage Categories</button>
+
+  <!-- Notification element -->
+  <div id="notification" role="alert" aria-live="assertive"></div>
+
+  <!-- Custom Modal for Confirmations -->
+  <div id="modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <p id="modal-message"></p>
+      <div class="modal-buttons">
+        <button id="modal-confirm">Yes</button>
+        <button id="modal-cancel">No</button>
+      </div>
+    </div>
+  </div>
+
+  <main role="main">
+    <!-- Manage Categories Section (above Budget) -->
+    <div id="manage-categories" class="card">
+      <h2>Manage Categories</h2>
+      <div class="form-group">
+        <input type="text" id="new-category-name" placeholder="New Category Name">
+        <input type="number" id="new-category-monthly" placeholder="Monthly Budget" step="0.01">
+      </div>
+      <button id="add-category-button">Add Category</button>
+      <ul id="category-list"></ul>
+    </div>
+
+    <!-- Budget Section -->
+    <div id="budget-section" class="card">
+      <h2>Budget</h2>
+      <table id="budget-table">
+        <tr>
+          <th>Category</th>
+          <th>Monthly Budget</th>
+          <th>Weekly Budget</th>
+          <th>Actual (Month)</th>
+          <th>Actual (Week)</th>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Add Expense Section (now collapsible) -->
+    <div id="add-expense-section" class="card collapsible">
+      <h2 class="collapsible-header">Add Expense</h2>
+      <div class="collapsible-content" style="display: none;">
+        <div class="form-group">
+          <label for="expense-date">Date:</label>
+          <input type="date" id="expense-date" />
+        </div>
+        <div class="form-group">
+          <label for="expense-category">Category:</label>
+          <select id="expense-category"></select>
+        </div>
+        <div class="form-group">
+          <label for="expense-description">Description:</label>
+          <input type="text" id="expense-description" />
+        </div>
+        <div class="form-group">
+          <label for="expense-amount">Amount:</label>
+          <input type="number" id="expense-amount" step="0.01" />
+        </div>
+        <button id="add-expense-button">Add Expense</button>
+        <button id="cancel-edit-button" style="display: none;">Cancel Edit</button>
+      </div>
+    </div>
+
+    <!-- Expenses Section (collapsed by default) -->
+    <div id="expenses-section" class="card collapsible">
+      <h2 class="collapsible-header">Expenses</h2>
+      <div class="collapsible-content" style="display: none;">
+        <div class="filters">
+          <label for="filter-month">Month:</label>
+          <select id="filter-month"></select>
+          <label for="filter-year">Year:</label>
+          <select id="filter-year"></select>
+          <!-- Toggle Button -->
+          <button id="toggle-expenses-button">Show All</button>
+        </div>
+        <table id="expenses-table">
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Action</th>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Spending Chart Section (collapsed by default) -->
+    <div id="chart-section" class="card collapsible">
+      <h2 class="collapsible-header">Spending Chart</h2>
+      <div class="collapsible-content" style="display: none;">
+        <div class="chart-container">
+          <canvas id="chart-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pie Chart Section (collapsed by default) -->
+    <div id="pie-chart-section" class="card collapsible">
+      <h2 class="collapsible-header">Spending Breakdown</h2>
+      <div class="collapsible-content" style="display: none;">
+        <div class="chart-container">
+          <canvas id="pie-chart-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Firebase (compat) scripts -->
+  <script src="https://www.gstatic.com/firebasejs/11.3.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.3.0/firebase-database-compat.js"></script>
+
+  <!-- Main JS -->
+  <script src="script.js" defer></script>
+  <script>
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+      .then(function(registration) {
+        console.log('Service Worker registered with scope:', registration.scope);
+      })
+      .catch(function(error) {
+        console.log('Service Worker registration failed:', error);
+      });
+    }
+  </script>
+</body>
+</html>
