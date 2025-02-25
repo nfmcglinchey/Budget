@@ -117,6 +117,376 @@ button:active {
 }
 
 /* Table Container */
+#budget-section, #expenses-section {
+    overflow-x: auto;
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    min-width: 800px;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 14px;
+    vertical-align: middle;
+}
+th {
+    background-color: #f1f1f1;
+    font-weight: 500;
+}
+th:nth-child(2), td:nth-child(2),
+th:nth-child(3), td:nth-child(3),
+th:nth-child(4), td:nth-child(4),
+th:nth-child(5), td:nth-child(5) {
+    text-align: center;
+}
+
+/* Sticky Category Column */
+#budget-table th:nth-child(1),
+#budget-table td:nth-child(1),
+#expenses-table th:nth-child(2),
+#expenses-table td:nth-child(2) {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 2;
+    font-weight: 600;
+    border-right: 2px solid #ddd;
+}
+
+/* Hover Effect */
+tr:hover {
+    background-color: #f8f8f8;
+}
+
+/* Budget Status Colors */
+.over-budget {
+    background-color: #ff3b30 !important;
+}
+.near-budget {
+    background-color: #ffcc00 !important;
+}
+.under-budget {
+    background-color: #34c759 !important;
+}
+
+/* Highlight Animation */
+.highlight-week {
+    animation: highlightFlash 1.5s ease-out;
+}
+@keyframes highlightFlash {
+    0%   { background-color: #ffff88; }
+    100% { background-color: transparent; }
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    margin: 0 auto;
+}
+@media (max-width: 768px) and (orientation: portrait) {
+    .chart-container {
+        height: 300px;
+    }
+}
+@media (max-width: 768px) and (orientation: landscape) {
+    .chart-container {
+        height: 400px;
+    }
+}
+
+/* Mobile Adjustments */
+@media screen and (max-width: 768px) {
+    button {
+        padding: 12px;
+        font-size: 18px;
+    }
+    th, td {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+    #budget-table th:nth-child(1),
+    #budget-table td:nth-child(1),
+    #expenses-table th:nth-child(2),
+    #expenses-table td:nth-child(2) {
+        min-width: 160px;
+        max-width: 180px;
+    }
+    table {
+        min-width: 100%;
+    }
+}
+
+/* Total Row */
+.total-row {
+    font-weight: bold;
+    background-color: #f0f0f0;
+}
+
+/* Editing Mode */
+#add-expense-section.editing-mode {
+    border: 2px solid #ff9900;
+    box-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
+    animation: pulse 1.5s infinite alternate;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 10px rgba(255, 153, 0, 0.5); }
+    100% { box-shadow: 0 0 15px rgba(255, 153, 0, 0.8); }
+}
+
+/* Manage Categories */
+#manage-categories .form-group {
+    margin: 10px auto;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+}
+#new-category-name,
+#new-category-monthly {
+    width: 100%;
+    box-sizing: border-box;
+}
+#category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+#category-list li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+}
+#category-list li button {
+    width: 80px;
+    margin-top: 0;
+}
+
+/* Collapsible Sections */
+.collapsible-header {
+    position: relative;
+    cursor: pointer;
+    margin-bottom: 0;
+    padding-bottom: 10px;
+}
+.collapsible-header::after {
+    content: "▶";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.2s ease;
+    font-size: 16px;
+    color: #666;
+}
+.collapsible-header.expanded::after {
+    transform: translateY(-50%) rotate(90deg);
+}
+.collapsible-content {
+    display: none;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.4);
+    z-index: 2000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.modal-buttons {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-around;
+}
+
+/* Standard Action Buttons in Expenses Table */
+#expenses-table td:nth-child(5) {
+    text-align: center;
+    white-space: nowrap;
+}
+#expenses-table td:nth-child(5) button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 36px;
+    margin: 4px;
+    box-sizing: border-box;
+}
+
+/* Add Expense Buttons */
+#add-expense-section {
+    text-align: center;
+}
+#add-expense-button,
+#cancel-edit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 36px;
+    margin: 4px;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+@media (max-width: 480px) and (orientation: portrait) {
+    #add-expense-button,
+    #cancel-edit-button {
+        width: 100%;
+        margin: 6px auto;
+    }
+}
+
+/* Swipe-to-Delete Styles for Mobile */
+.swipe-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  z-index: 1;/* General Styles */
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f2f5;
+    color: #333;
+}
+
+/* Prevent background scrolling when modal is open */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Headings */
+h1, h2 {
+    text-align: center;
+    color: #222;
+}
+
+/* Notification Styles */
+#notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #1d72b8;
+    color: #fff;
+    padding: 10px 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 1000;
+}
+#notification.show {
+    opacity: 1;
+}
+
+/* Card Containers */
+.card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 20px auto;
+    padding: 20px;
+    max-width: 960px;
+}
+
+/* Manage Categories hidden by default */
+#manage-categories {
+    display: none;
+}
+
+/* Toggle Button for Manage Categories */
+#toggle-manage-categories {
+    background: #e2e2e2;
+    color: #333;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    padding: 6px 12px;
+    margin: 10px auto;
+    display: block;
+    cursor: pointer;
+}
+#toggle-manage-categories:hover {
+    background: #d2d2d2;
+}
+
+/* Filters */
+.filters {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.filters #toggle-expenses-button {
+    margin-top: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+    border-radius: 4px;
+    line-height: normal;
+}
+
+/* Form Group */
+.form-group {
+    margin: 10px auto;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Inputs and Buttons */
+input, select, button {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+button {
+    background-color: #1d72b8;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    border: none;
+    margin-top: 10px;
+}
+button:hover {
+    background-color: #155d8a;
+}
+button:active {
+    transform: scale(0.98);
+}
+
+/* Table Container */
 #budget-section,
 #expenses-section {
     overflow-x: auto;
@@ -329,6 +699,15 @@ tr:hover {
     text-align: center;
     white-space: nowrap;
 }
+#expenses-table td:nth-child(5) button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 36px;
+    margin: 4px;
+    box-sizing: border-box;
+}
 
 /* Add Expense Buttons */
 #add-expense-section {
@@ -353,51 +732,82 @@ tr:hover {
     }
 }
 
-/* Mobile Swipe in Action Cell */
-/* In mobile view, render the Action cell with a swipe container to reveal Edit/Delete buttons */
-@media screen and (max-width: 768px) {
-    /* Target only the Action cell (assumed to be the 5th td in a row) */
-    td.action-cell {
-        position: relative;
-        overflow: hidden;
-        padding: 0;
-    }
-    td.action-cell .swipe-content {
-        position: relative;
-        z-index: 2;
-        background-color: #fff;
-        transition: transform 0.3s ease;
-        width: 100%;
-        /* Padding can be adjusted as needed */
-        padding: 10px;
-        box-sizing: border-box;
-    }
-    td.action-cell .swipe-actions {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 160px; /* Enough for two 80px buttons */
-        height: 100%;
-        display: flex;
-        z-index: 1;
-    }
-    td.action-cell .swipe-actions button {
-        width: 80px;
-        border: none;
-        height: 100%;
-        font-size: 14px;
-    }
-    td.action-cell .swipe-actions .swipe-edit {
-        background-color: gray;
-        color: #fff;
-    }
-    td.action-cell .swipe-actions .swipe-delete {
-        background-color: #ff3b30;
-        color: #fff;
-    }
-    /* Optional: adjust text styling for the expense details if needed */
-    .expense-details {
-        display: flex;
-        justify-content: space-between;
-    }
+/* Swipe-to-Delete Styles for Mobile */
+.expense-swipe td {
+  /* Ensures the hidden buttons don't peek out */
+  position: relative;
+  overflow: hidden;
+  padding: 0; /* We'll add padding inside .swipe-content */
+}
+
+/* The container holding the Edit/Delete buttons */
+.swipe-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 160px;  /* Enough for two 80px buttons */
+  height: 100%;
+  display: flex;
+  z-index: 1;
+}
+
+/* The white “front” container that slides left/right */
+.swipe-content {
+  position: relative;
+  z-index: 2;         /* must be higher than swipe-actions */
+  width: 100%;        /* cover the entire cell width */
+  background-color: #fff;
+  transition: transform 0.3s ease;
+  padding: 10px;      /* row padding moved here so it slides smoothly */
+}
+
+/* Buttons behind the content */
+.swipe-actions .swipe-edit {
+  width: 80px;
+  background-color: gray;
+  color: #fff;
+  border: none;
+}
+
+.swipe-actions .swipe-delete {
+  width: 80px;
+  background-color: #ff3b30;
+  color: #fff;
+  border: none;
+}
+
+/* Example styling for the text inside the white container */
+.expense-details {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Visual feedback class if you’re using the “swipe-delete-ready” approach */
+.swipe-delete-ready {
+  background-color: rgba(255, 59, 48, 0.2);
+}
+
+}
+.swipe-actions .swipe-edit {
+  width: 80px;
+  background-color: gray;
+  color: #fff;
+  border: none;
+}
+.swipe-actions .swipe-delete {
+  width: 80px;
+  background-color: #ff3b30;
+  color: #fff;
+  border: none;
+}
+.swipe-content {
+  position: relative;
+  z-index: 2;
+  transition: transform 0.3s ease;
+  background-color: #fff;
+  padding: 10px;
+}
+.expense-details {
+  display: flex;
+  justify-content: space-between;
 }
