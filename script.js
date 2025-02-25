@@ -23,6 +23,33 @@ let editingExpenseId = null;
 let budgetCategories = [];
 
 /*-------------------------------------------------------------
+   Utility Functions
+-------------------------------------------------------------*/
+function isMobile() {
+  return ('ontouchstart' in window) || (window.innerWidth <= 768);
+}
+
+function setDefaultDate() {
+  const dateInput = document.getElementById("expense-date");
+  if (!dateInput) {
+    console.error("Date input field not found.");
+    return;
+  }
+  const today = new Date();
+  dateInput.value = today.toISOString().slice(0, 10);
+}
+
+function formatDate(isoDate) {
+  const [year, month, day] = isoDate.split("-");
+  return `${month}/${day}/${year}`;
+}
+
+function parseLocalDate(dateString) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/*-------------------------------------------------------------
    Category Management (stored in Firebase)
 -------------------------------------------------------------*/
 async function loadCategories() {
@@ -122,105 +149,8 @@ function populateExpenseCategoryDropdown() {
 }
 
 /*-------------------------------------------------------------
-   Main Functionality
+   Budget and Expense Management
 -------------------------------------------------------------*/
-document.addEventListener("DOMContentLoaded", function () {
-  setTimeout(setDefaultDate, 500);
-  loadCategories();
-  populateFilters();
-  initializeChart();
-  initializePieChart();
-
-  document.getElementById("add-expense-button").addEventListener("click", addExpense);
-
-  const cancelEditButton = document.getElementById("cancel-edit-button");
-  if (cancelEditButton) {
-    cancelEditButton.addEventListener("click", cancelEdit);
-  }
-
-  document.getElementById("filter-month").addEventListener("change", loadExpenses);
-  document.getElementById("filter-year").addEventListener("change", loadExpenses);
-
-  const toggleButton = document.getElementById("toggle-expenses-button");
-  if (toggleButton) {
-    toggleButton.addEventListener("click", () => {
-      showAllExpenses = !showAllExpenses;
-      loadExpenses();
-    });
-  }
-
-  // Manage Categories: Add new category using Firebase with duplicate check
-  document.getElementById("add-category-button").addEventListener("click", () => {
-    const nameInput = document.getElementById("new-category-name");
-    const monthlyInput = document.getElementById("new-category-monthly");
-    const name = nameInput.value.trim();
-    const monthly = parseFloat(monthlyInput.value);
-    if (!name || isNaN(monthly)) {
-      showNotification("Please enter valid category name and monthly budget.");
-      return;
-    }
-    if (budgetCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
-      showNotification("Duplicate category name. Please enter a unique category.");
-      return;
-    }
-    db.ref("categories").push({ name: name, monthly: monthly })
-      .then(() => {
-        showNotification("Category added.");
-        nameInput.value = "";
-        monthlyInput.value = "";
-      })
-      .catch(error => {
-        console.error("Error adding category:", error);
-        showNotification("Error adding category.");
-      });
-  });
-
-  // Toggle Manage Categories section visibility
-  const toggleManageBtn = document.getElementById("toggle-manage-categories");
-  const manageSection = document.getElementById("manage-categories");
-  toggleManageBtn.addEventListener("click", () => {
-    if (manageSection.style.display === "none" || manageSection.style.display === "") {
-      manageSection.style.display = "block";
-    } else {
-      manageSection.style.display = "none";
-    }
-  });
-
-  // Make each collapsible header clickable to expand/collapse
-  document.querySelectorAll('.collapsible-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const content = header.nextElementSibling;
-      if (content.style.display === "none" || content.style.display === "") {
-        content.style.display = "block";
-        header.classList.add("expanded");
-      } else {
-        content.style.display = "none";
-        header.classList.remove("expanded");
-      }
-    });
-  });
-});
-
-function setDefaultDate() {
-  const dateInput = document.getElementById("expense-date");
-  if (!dateInput) {
-    console.error("Date input field not found.");
-    return;
-  }
-  const today = new Date();
-  dateInput.value = today.toISOString().slice(0, 10);
-}
-
-function formatDate(isoDate) {
-  const [year, month, day] = isoDate.split("-");
-  return `${month}/${day}/${year}`;
-}
-
-function parseLocalDate(dateString) {
-  const [year, month, day] = dateString.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
 function loadBudget() {
   const budgetTable = document.getElementById("budget-table");
   if (!budgetTable) {
@@ -382,56 +312,136 @@ function loadExpenses() {
     });
     monthlyExpenses.sort((a, b) => b.parsedDate - a.parsedDate);
     const finalExpenses = showAllExpenses ? monthlyExpenses : monthlyExpenses.slice(0, 5);
+
     finalExpenses.forEach(exp => {
       const formattedDate = formatDate(exp.date);
-      const row = document.createElement("tr");
-      row.classList.add("expense-swipe");
-      
-      const dateCell = document.createElement("td");
-      dateCell.textContent = formattedDate;
-      row.appendChild(dateCell);
-      
-      const categoryCell = document.createElement("td");
-      categoryCell.textContent = exp.category;
-      row.appendChild(categoryCell);
-      
-      const descCell = document.createElement("td");
-      descCell.textContent = exp.description || "—";
-      row.appendChild(descCell);
-      
-      const amountCell = document.createElement("td");
-      amountCell.textContent = `$${exp.amount.toFixed(2)}`;
-      row.appendChild(amountCell);
-      
-      const actionCell = document.createElement("td");
-      
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "Edit";
-      editBtn.style.marginRight = "8px";
-      editBtn.addEventListener("click", () => {
-        editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
-      });
-      actionCell.appendChild(editBtn);
-      
-      const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "Delete";
-      // Standard click deletion
-      deleteBtn.addEventListener("click", () => {
-        customConfirm("Are you sure you want to delete this expense?")
-          .then(confirmed => {
-            if (confirmed) {
-              deleteExpense(exp.key);
-            }
-          });
-      });
-      actionCell.appendChild(deleteBtn);
-      
-      row.appendChild(actionCell);
-      
-      // Attach swipe-to-delete events to the delete button only
-      attachSwipeToDeleteOnButton(deleteBtn, row, exp.key);
-      
-      expensesTable.appendChild(row);
+
+      if (isMobile()) {
+        // Mobile version with swipe functionality
+        const row = document.createElement("tr");
+        row.classList.add("expense-swipe");
+        const cell = document.createElement("td");
+        cell.colSpan = 5;
+        cell.style.position = "relative";
+
+        // Create swipe actions container
+        const swipeActions = document.createElement("div");
+        swipeActions.classList.add("swipe-actions");
+
+        const editBtn = document.createElement("button");
+        editBtn.classList.add("swipe-edit");
+        editBtn.textContent = "Edit";
+        editBtn.addEventListener("click", () => {
+          editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
+        });
+        swipeActions.appendChild(editBtn);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.classList.add("swipe-delete");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.addEventListener("click", () => {
+          customConfirm("Swipe delete: Are you sure you want to delete this expense?")
+            .then(confirmed => {
+              if (confirmed) {
+                deleteExpense(exp.key);
+              }
+            });
+        });
+        swipeActions.appendChild(deleteBtn);
+
+        // Create swipe content container with expense details
+        const swipeContent = document.createElement("div");
+        swipeContent.classList.add("swipe-content");
+        swipeContent.innerHTML = `
+          <div class="expense-details">
+            <span class="date">${formattedDate}</span>
+            <span class="category">${exp.category}</span>
+            <span class="description">${exp.description || "—"}</span>
+            <span class="amount">$${exp.amount.toFixed(2)}</span>
+          </div>
+        `;
+
+        // Append actions and content to cell
+        cell.appendChild(swipeActions);
+        cell.appendChild(swipeContent);
+        row.appendChild(cell);
+
+        // Add touch events for swipe
+        let startX = 0, currentX = 0;
+        const threshold = 80;
+        swipeContent.addEventListener("touchstart", function(e) {
+          startX = e.touches[0].clientX;
+          swipeContent.style.transition = "";
+        });
+        swipeContent.addEventListener("touchmove", function(e) {
+          currentX = e.touches[0].clientX;
+          let deltaX = currentX - startX;
+          if (deltaX < 0) { // swiping left
+            swipeContent.style.transform = `translateX(${deltaX}px)`;
+          }
+        });
+        swipeContent.addEventListener("touchend", function(e) {
+          let deltaX = currentX - startX;
+          if (deltaX < -threshold) {
+            swipeContent.style.transition = "transform 0.3s ease";
+            swipeContent.style.transform = "translateX(-160px)";
+          } else {
+            swipeContent.style.transition = "transform 0.3s ease";
+            swipeContent.style.transform = "translateX(0)";
+          }
+        });
+
+        expensesTable.appendChild(row);
+      } else {
+        // Desktop version: standard table row with inline buttons
+        const row = document.createElement("tr");
+        row.classList.add("expense-swipe");
+        
+        const dateCell = document.createElement("td");
+        dateCell.textContent = formattedDate;
+        row.appendChild(dateCell);
+        
+        const categoryCell = document.createElement("td");
+        categoryCell.textContent = exp.category;
+        row.appendChild(categoryCell);
+        
+        const descCell = document.createElement("td");
+        descCell.textContent = exp.description || "—";
+        row.appendChild(descCell);
+        
+        const amountCell = document.createElement("td");
+        amountCell.textContent = `$${exp.amount.toFixed(2)}`;
+        row.appendChild(amountCell);
+        
+        const actionCell = document.createElement("td");
+        
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Edit";
+        editBtn.style.marginRight = "8px";
+        editBtn.addEventListener("click", () => {
+          editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
+        });
+        actionCell.appendChild(editBtn);
+        
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.addEventListener("click", () => {
+          customConfirm("Are you sure you want to delete this expense?")
+            .then(confirmed => {
+              if (confirmed) {
+                deleteExpense(exp.key);
+              }
+            });
+        });
+        actionCell.appendChild(deleteBtn);
+        
+        row.appendChild(actionCell);
+        
+        // Attach swipe-to-delete events to the delete button
+        attachSwipeToDeleteOnButton(deleteBtn, row, exp.key);
+        
+        expensesTable.appendChild(row);
+      }
     });
     updateTotalRow();
     updateChartDebounced();
@@ -683,16 +693,6 @@ function updatePieChart() {
   }
 }
 
-function showNotification(message) {
-  const notification = document.getElementById("notification");
-  if (!notification) return;
-  notification.textContent = message;
-  notification.classList.add("show");
-  setTimeout(() => {
-    notification.classList.remove("show");
-  }, 2000);
-}
-
 function customConfirm(message) {
   return new Promise(resolve => {
     const modal = document.getElementById("modal");
@@ -721,9 +721,7 @@ function customConfirm(message) {
   });
 }
 
-// New: Attach swipe-to-delete functionality to the delete button.
-// Tapping the button triggers the normal confirm flow,
-// but dragging it will slide the entire row.
+// Existing swipe-to-delete for desktop (if needed)
 function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   let touchStartX = 0;
   let touchDeltaX = 0;
@@ -742,7 +740,6 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
     if (Math.abs(touchDeltaX) > 10) {
       dragging = true;
     }
-    // Only allow left swipe
     if (touchDeltaX < 0) {
       row.style.transform = `translateX(${touchDeltaX}px)`;
       if (Math.abs(touchDeltaX) > threshold) {
@@ -783,3 +780,52 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
     touchDeltaX = 0;
   });
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+  setTimeout(setDefaultDate, 500);
+  loadCategories();
+  populateFilters();
+  initializeChart();
+  initializePieChart();
+
+  document.getElementById("add-expense-button").addEventListener("click", addExpense);
+
+  const cancelEditButton = document.getElementById("cancel-edit-button");
+  if (cancelEditButton) {
+    cancelEditButton.addEventListener("click", cancelEdit);
+  }
+
+  document.getElementById("filter-month").addEventListener("change", loadExpenses);
+  document.getElementById("filter-year").addEventListener("change", loadExpenses);
+
+  const toggleButton = document.getElementById("toggle-expenses-button");
+  if (toggleButton) {
+    toggleButton.addEventListener("click", () => {
+      showAllExpenses = !showAllExpenses;
+      loadExpenses();
+    });
+  }
+
+  const toggleManageBtn = document.getElementById("toggle-manage-categories");
+  const manageSection = document.getElementById("manage-categories");
+  toggleManageBtn.addEventListener("click", () => {
+    if (manageSection.style.display === "none" || manageSection.style.display === "") {
+      manageSection.style.display = "block";
+    } else {
+      manageSection.style.display = "none";
+    }
+  });
+
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const content = header.nextElementSibling;
+      if (content.style.display === "none" || content.style.display === "") {
+        content.style.display = "block";
+        header.classList.add("expanded");
+      } else {
+        content.style.display = "none";
+        header.classList.remove("expanded");
+      }
+    });
+  });
+});
