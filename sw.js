@@ -10,7 +10,6 @@ const urlsToCache = [
   'https://www.gstatic.com/firebasejs/11.3.0/firebase-database-compat.js'
 ];
 
-// Install event - Cache assets for offline use
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -19,7 +18,6 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// Activate event - Cleanup old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -33,7 +31,6 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch event - Serve cached assets & handle offline requests
 self.addEventListener('fetch', event => {
   if (event.request.method === 'GET') {
     event.respondWith(
@@ -45,7 +42,6 @@ self.addEventListener('fetch', event => {
   }
 });
 
-// Handle offline POST requests (store expenses locally)
 async function handleOfflinePost(event) {
   try {
     const response = await fetch(event.request);
@@ -60,7 +56,6 @@ async function handleOfflinePost(event) {
   }
 }
 
-// Background Sync - Sync offline expenses when reconnected
 self.addEventListener('sync', event => {
   if (event.tag === 'syncExpenses') {
     event.waitUntil(syncExpenses());
@@ -82,7 +77,6 @@ async function syncExpenses() {
   localStorage.removeItem('offlineExpenses');
 }
 
-// Register sync when online again
 self.addEventListener('online', () => {
   navigator.serviceWorker.ready.then(registration => {
     registration.sync.register('syncExpenses');
