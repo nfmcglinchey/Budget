@@ -125,7 +125,8 @@ button:active {
 /* Table Styles */
 table {
     width: 100%;
-    min-width: 800px;
+    /* min-width: 800px; remove or comment this out */
+    table-layout: auto; /* let the browser figure out column widths */
     border-collapse: collapse;
     margin: 10px 0;
 }
