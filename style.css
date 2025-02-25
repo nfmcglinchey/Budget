@@ -364,10 +364,25 @@ tr:hover {
 
 /* Swipe-to-Delete Styles for Mobile */
 .expense-swipe td {
-  /* Ensures the hidden buttons don't peek out */
+  /* Ensures the hidden buttons don't peek out and sets a fixed row height */
   position: relative;
   overflow: hidden;
-  padding: 0; /* We'll add padding inside .swipe-content */
+  padding: 0;
+  height: 44px; /* Adjust as needed */
+}
+
+/* The white “front” container that slides left/right */
+.swipe-content {
+  position: relative;
+  z-index: 2;  /* must be higher than swipe-actions */
+  width: 100%; /* cover the entire cell width */
+  background-color: #fff;
+  transition: transform 0.3s ease;
+  padding: 0 10px;   /* horizontal padding only */
+  display: flex;
+  align-items: center;
+  height: 44px;      /* match row height */
+  box-sizing: border-box;
 }
 
 /* The container holding the Edit/Delete buttons */
@@ -375,41 +390,36 @@ tr:hover {
   position: absolute;
   top: 0;
   right: 0;
-  width: 160px;  /* Enough for two 80px buttons */
-  height: 100%;
+  width: 160px;      /* Enough for two 80px buttons */
+  height: 44px;      /* match row height */
   display: flex;
+  align-items: center;
   z-index: 1;
 }
 
-/* The white “front” container that slides left/right */
-.swipe-content {
-  position: relative;
-  z-index: 2;         /* must be higher than swipe-actions */
-  width: 100%;        /* cover the entire cell width */
-  background-color: #fff;
-  transition: transform 0.3s ease;
-  padding: 10px;      /* row padding moved here so it slides smoothly */
-}
-
-/* Buttons behind the content */
-.swipe-actions .swipe-edit {
-  width: 80px;
-  background-color: gray;
-  color: #fff;
-  border: none;
-}
-
+/* Swipe buttons: forced square and no margin */
+.swipe-actions .swipe-edit,
 .swipe-actions .swipe-delete {
   width: 80px;
-  background-color: #ff3b30;
-  color: #fff;
+  height: 44px;
+  margin: 0;
   border: none;
+  color: #fff;
+  border-radius: 0;
+}
+.swipe-actions .swipe-edit {
+  background-color: gray;
+}
+.swipe-actions .swipe-delete {
+  background-color: #ff3b30;
 }
 
-/* Example styling for the text inside the white container */
+/* Text area inside the swipe row */
 .expense-details {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  width: 100%;
 }
 
 /* Visual feedback class if you’re using the “swipe-delete-ready” approach */
@@ -423,7 +433,7 @@ tr:hover {
     #expenses-table tr:first-child {
         display: none;
     }
-    /* Make swipe buttons square (mobile only) */
+    /* Make sure the mobile swipe buttons remain square */
     .swipe-actions button {
         border-radius: 0 !important;
     }
