@@ -117,7 +117,8 @@ button:active {
 }
 
 /* Table Container */
-#budget-section, #expenses-section {
+#budget-section,
+#expenses-section {
     overflow-x: auto;
 }
 
@@ -323,7 +324,7 @@ tr:hover {
     justify-content: space-around;
 }
 
-/* Standard Action Buttons in Expenses Table */
+/* Standard Action Buttons in Desktop Table */
 #expenses-table td:nth-child(5) {
     text-align: center;
     white-space: nowrap;
@@ -362,34 +363,56 @@ tr:hover {
 }
 
 /* Swipe-to-Delete Styles for Mobile */
+.expense-swipe td {
+  /* Ensures the hidden buttons don't peek out */
+  position: relative;
+  overflow: hidden;
+  padding: 0; /* We'll add padding inside .swipe-content */
+}
+
+/* The container holding the Edit/Delete buttons */
 .swipe-actions {
   position: absolute;
   top: 0;
   right: 0;
+  width: 160px;  /* Enough for two 80px buttons */
   height: 100%;
   display: flex;
   z-index: 1;
 }
+
+/* The white “front” container that slides left/right */
+.swipe-content {
+  position: relative;
+  z-index: 2;         /* must be higher than swipe-actions */
+  width: 100%;        /* cover the entire cell width */
+  background-color: #fff;
+  transition: transform 0.3s ease;
+  padding: 10px;      /* row padding moved here so it slides smoothly */
+}
+
+/* Buttons behind the content */
 .swipe-actions .swipe-edit {
   width: 80px;
   background-color: gray;
   color: #fff;
   border: none;
 }
+
 .swipe-actions .swipe-delete {
   width: 80px;
   background-color: #ff3b30;
   color: #fff;
   border: none;
 }
-.swipe-content {
-  position: relative;
-  z-index: 2;
-  transition: transform 0.3s ease;
-  background-color: #fff;
-  padding: 10px;
-}
+
+/* Example styling for the text inside the white container */
 .expense-details {
   display: flex;
   justify-content: space-between;
+}
+
+/* Visual feedback class if you’re using the “swipe-delete-ready” approach */
+.swipe-delete-ready {
+  background-color: rgba(255, 59, 48, 0.2);
 }
