@@ -369,6 +369,7 @@ function loadExpenses() {
         // Add touch events for swipe
         let startX = 0, currentX = 0;
         const threshold = 80;
+        const fullSwipeThreshold = -250;
         swipeContent.addEventListener("touchstart", function(e) {
           startX = e.touches[0].clientX;
           swipeContent.style.transition = "";
@@ -382,7 +383,20 @@ function loadExpenses() {
         });
         swipeContent.addEventListener("touchend", function(e) {
           let deltaX = currentX - startX;
-          if (deltaX < -threshold) {
+          if (deltaX < fullSwipeThreshold) {
+            // Full swipe left: animate off-screen and trigger deletion
+            swipeContent.style.transition = "transform 0.3s ease";
+            swipeContent.style.transform = "translateX(-100%)";
+            customConfirm("Swipe delete: Are you sure you want to delete this expense?")
+              .then(confirmed => {
+                if (confirmed) {
+                  deleteExpense(exp.key);
+                } else {
+                  swipeContent.style.transition = "transform 0.3s ease";
+                  swipeContent.style.transform = "translateX(0)";
+                }
+              });
+          } else if (deltaX < -threshold) {
             swipeContent.style.transition = "transform 0.3s ease";
             swipeContent.style.transform = "translateX(-160px)";
           } else {
@@ -390,7 +404,6 @@ function loadExpenses() {
             swipeContent.style.transform = "translateX(0)";
           }
         });
-
         expensesTable.appendChild(row);
       } else {
         // Desktop version: standard table row with inline buttons
