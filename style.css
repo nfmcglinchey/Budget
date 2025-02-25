@@ -354,7 +354,7 @@ tr:hover {
     box-sizing: border-box;
     white-space: nowrap;
 }
-@media (max-width: 480px) and (orientation: portrait) {
+@media (max-width: 480px) {
     #add-expense-button,
     #cancel-edit-button {
         width: 100%;
