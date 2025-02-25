@@ -7,7 +7,7 @@ body {
     color: #333;
 }
 
-/* Prevent background scrolling when modal is open (optional) */
+/* Prevent background scrolling when modal is open */
 body.modal-open {
     overflow: hidden;
 }
@@ -36,7 +36,7 @@ h1, h2 {
     opacity: 1;
 }
 
-/* Card containers for sections */
+/* Card Containers */
 .card {
     background-color: #fff;
     border-radius: 8px;
@@ -46,12 +46,12 @@ h1, h2 {
     max-width: 960px;
 }
 
-/* Hide Manage Categories by default */
+/* Manage Categories hidden by default */
 #manage-categories {
     display: none;
 }
 
-/* Subtle style for the Manage Categories toggle button */
+/* Toggle Button for Manage Categories */
 #toggle-manage-categories {
     background: #e2e2e2;
     color: #333;
@@ -66,7 +66,7 @@ h1, h2 {
     background: #d2d2d2;
 }
 
-/* Filters styling */
+/* Filters */
 .filters {
     display: flex;
     justify-content: center;
@@ -74,8 +74,6 @@ h1, h2 {
     gap: 10px;
     margin-bottom: 10px;
 }
-
-/* Fix for the "Show All" button (updated) */
 .filters #toggle-expenses-button {
     margin-top: 0;
     display: inline-flex;
@@ -88,7 +86,7 @@ h1, h2 {
     line-height: normal;
 }
 
-/* Form group styling */
+/* Form Group */
 .form-group {
     margin: 10px auto;
     max-width: 300px;
@@ -96,15 +94,13 @@ h1, h2 {
     flex-direction: column;
 }
 
-/* Inputs and buttons */
+/* Inputs and Buttons */
 input, select, button {
     padding: 8px;
     font-size: 16px;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
-
-/* Button styles */
 button {
     background-color: #1d72b8;
     color: #fff;
@@ -120,7 +116,7 @@ button:active {
     transform: scale(0.98);
 }
 
-/* Table Container: Enable Horizontal Scrolling */
+/* Table Container */
 #budget-section, #expenses-section {
     overflow-x: auto;
 }
@@ -132,8 +128,6 @@ table {
     border-collapse: collapse;
     margin: 10px 0;
 }
-
-/* Table Cells */
 th, td {
     border: 1px solid #ddd;
     padding: 10px 12px;
@@ -141,14 +135,10 @@ th, td {
     font-size: 14px;
     vertical-align: middle;
 }
-
-/* Header row styling */
 th {
     background-color: #f1f1f1;
     font-weight: 500;
 }
-
-/* Center numeric columns */
 th:nth-child(2), td:nth-child(2),
 th:nth-child(3), td:nth-child(3),
 th:nth-child(4), td:nth-child(4),
@@ -169,7 +159,7 @@ th:nth-child(5), td:nth-child(5) {
     border-right: 2px solid #ddd;
 }
 
-/* Hover effect on table rows */
+/* Hover Effect */
 tr:hover {
     background-color: #f8f8f8;
 }
@@ -185,7 +175,7 @@ tr:hover {
     background-color: #34c759 !important;
 }
 
-/* Highlight animation for Actual (Week) total */
+/* Highlight Animation */
 .highlight-week {
     animation: highlightFlash 1.5s ease-out;
 }
@@ -194,15 +184,13 @@ tr:hover {
     100% { background-color: transparent; }
 }
 
-/* Container around the chart */
+/* Chart Container */
 .chart-container {
     position: relative;
     width: 100%;
     height: 500px;
     margin: 0 auto;
 }
-
-/* Mobile chart adjustments */
 @media (max-width: 768px) and (orientation: portrait) {
     .chart-container {
         height: 300px;
@@ -214,7 +202,7 @@ tr:hover {
     }
 }
 
-/* Mobile adjustments for tables and buttons */
+/* Mobile Adjustments */
 @media screen and (max-width: 768px) {
     button {
         padding: 12px;
@@ -236,39 +224,35 @@ tr:hover {
     }
 }
 
-/* Total row styling */
+/* Total Row */
 .total-row {
     font-weight: bold;
     background-color: #f0f0f0;
 }
 
+/* Editing Mode */
 #add-expense-section.editing-mode {
     border: 2px solid #ff9900;
     box-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
     animation: pulse 1.5s infinite alternate;
 }
-
 @keyframes pulse {
     0% { box-shadow: 0 0 10px rgba(255, 153, 0, 0.5); }
     100% { box-shadow: 0 0 15px rgba(255, 153, 0, 0.8); }
 }
 
-/* Manage Categories: stacked inputs for name/budget */
+/* Manage Categories */
 #manage-categories .form-group {
     margin: 10px auto;
     max-width: 300px;
     display: flex;
     flex-direction: column;
 }
-
-/* Force each input to fill 100% width */
 #new-category-name,
 #new-category-monthly {
     width: 100%;
     box-sizing: border-box;
 }
-
-/* The category list remains in a 3-column grid */
 #category-list {
     list-style: none;
     padding: 0;
@@ -286,7 +270,7 @@ tr:hover {
     margin-top: 0;
 }
 
-/* Collapsible Sections by Clicking the Heading */
+/* Collapsible Sections */
 .collapsible-header {
     position: relative;
     cursor: pointer;
@@ -310,7 +294,7 @@ tr:hover {
     display: none;
 }
 
-/* Modal Styles for Centering */
+/* Modal Styles */
 .modal {
     position: fixed;
     top: 0;
@@ -339,10 +323,7 @@ tr:hover {
     justify-content: space-around;
 }
 
-/*
-   Center "Edit" and "Delete" buttons side by side in the Action column,
-   ensuring same size and spacing.
-*/
+/* Standard Action Buttons in Expenses Table */
 #expenses-table td:nth-child(5) {
     text-align: center;
     white-space: nowrap;
@@ -357,10 +338,7 @@ tr:hover {
     box-sizing: border-box;
 }
 
-/*
-   Make "Add Expense/Update Expense" and "Cancel Edit"
-   the same size and on the same baseline in the Add Expense section.
-*/
+/* Add Expense Buttons */
 #add-expense-section {
     text-align: center;
 }
@@ -375,10 +353,6 @@ tr:hover {
     box-sizing: border-box;
     white-space: nowrap;
 }
-
-/*
-   On mobile portrait, stack these buttons full-width to avoid awkward layout
-*/
 @media (max-width: 480px) and (orientation: portrait) {
     #add-expense-button,
     #cancel-edit-button {
@@ -387,7 +361,35 @@ tr:hover {
     }
 }
 
-/* New: Swipe-to-delete visual feedback */
-.swipe-delete-ready {
-  background-color: rgba(255, 59, 48, 0.2);
+/* Swipe-to-Delete Styles for Mobile */
+.swipe-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  z-index: 1;
+}
+.swipe-actions .swipe-edit {
+  width: 80px;
+  background-color: gray;
+  color: #fff;
+  border: none;
+}
+.swipe-actions .swipe-delete {
+  width: 80px;
+  background-color: #ff3b30;
+  color: #fff;
+  border: none;
+}
+.swipe-content {
+  position: relative;
+  z-index: 2;
+  transition: transform 0.3s ease;
+  background-color: #fff;
+  padding: 10px;
+}
+.expense-details {
+  display: flex;
+  justify-content: space-between;
 }
