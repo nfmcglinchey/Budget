@@ -438,3 +438,10 @@ tr:hover {
         border-radius: 0 !important;
     }
 }
+
+/* New: Hide header in mobile landscape for consistent look */
+@media screen and (orientation: landscape) and (max-width: 1024px) {
+    #expenses-table tr:first-child {
+        display: none;
+    }
+}
