@@ -848,12 +848,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // (OLD BUTTON CODE COMMENTED OUT)
-  // const themeToggle = document.getElementById('theme-toggle');
-  // themeToggle?.addEventListener('click', function () {
-  //   ...
-  // });
-
   // Listen for input on the expense amount field and mask it as currency
   const amountField = document.getElementById("expense-amount");
   amountField.addEventListener("input", function(e) {
