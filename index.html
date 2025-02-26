@@ -82,8 +82,7 @@
         </div>
         <div class="form-group">
           <label for="expense-amount">Amount:</label>
-          <!-- Changed input type from number to text so our custom formatting works uniformly -->
-          <input type="text" id="expense-amount" inputmode="decimal" />
+          <input type="number" id="expense-amount" step="0.01" />
         </div>
         <button id="add-expense-button">Add Expense</button>
         <button id="cancel-edit-button" style="display: none;">Cancel Edit</button>
