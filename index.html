@@ -45,7 +45,7 @@
   </div>
 
   <main role="main">
-    <!-- Manage Categories Section (above Budget) -->
+    <!-- Manage Categories Section -->
     <div id="manage-categories" class="card">
       <h2>Manage Categories</h2>
       <div class="form-group">
@@ -70,7 +70,7 @@
       </table>
     </div>
 
-    <!-- Add Expense Section (now collapsible) -->
+    <!-- Add Expense Section -->
     <div id="add-expense-section" class="card collapsible">
       <h2 class="collapsible-header">Add Expense</h2>
       <div class="collapsible-content" style="display: none;">
@@ -88,20 +88,14 @@
         </div>
         <div class="form-group">
           <label for="expense-amount">Amount:</label>
-          <!-- Updated to text with inputmode="decimal" and placeholder -->
-          <input
-            type="text"
-            id="expense-amount"
-            inputmode="decimal"
-            placeholder="$0.00"
-          />
+          <input type="text" id="expense-amount" inputmode="decimal" placeholder="$0.00" />
         </div>
         <button id="add-expense-button">Add Expense</button>
         <button id="cancel-edit-button" style="display: none;">Cancel Edit</button>
       </div>
     </div>
 
-    <!-- Expenses Section (collapsed by default) -->
+    <!-- Expenses Section -->
     <div id="expenses-section" class="card collapsible">
       <h2 class="collapsible-header">Expenses</h2>
       <div class="collapsible-content" style="display: none;">
@@ -110,7 +104,6 @@
           <select id="filter-month"></select>
           <label for="filter-year">Year:</label>
           <select id="filter-year"></select>
-          <!-- Toggle Button -->
           <button id="toggle-expenses-button">Show All</button>
         </div>
         <table id="expenses-table">
@@ -125,7 +118,7 @@
       </div>
     </div>
 
-    <!-- Spending Chart Section (collapsed by default) -->
+    <!-- Spending Chart Section -->
     <div id="chart-section" class="card collapsible">
       <h2 class="collapsible-header">Spending Chart</h2>
       <div class="collapsible-content" style="display: none;">
@@ -135,7 +128,7 @@
       </div>
     </div>
 
-    <!-- Pie Chart Section (collapsed by default) -->
+    <!-- Pie Chart Section -->
     <div id="pie-chart-section" class="card collapsible">
       <h2 class="collapsible-header">Spending Breakdown</h2>
       <div class="collapsible-content" style="display: none;">
