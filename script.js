@@ -99,7 +99,6 @@ function renderCategoryList() {
       const newName = prompt("Edit category name:", cat.name);
       const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
       if (newName && !isNaN(newMonthly)) {
-        // Check for duplicates when name is changed
         if (
           newName.toLowerCase() !== cat.name.toLowerCase() &&
           budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
@@ -200,7 +199,6 @@ async function addExpense() {
     const description = document.getElementById("expense-description")?.value.trim();
     const amount = parseFloat(document.getElementById("expense-amount")?.value);
     
-    // Check each field and show a specific message if something's missing.
     if (!date) {
       showNotification("Please select a date.");
       return;
@@ -239,11 +237,10 @@ function resetExpenseForm() {
   document.getElementById("expense-category").selectedIndex = 0;
   document.getElementById("expense-description").value = "";
   document.getElementById("expense-amount").value = "0.00";
-  rawAmount = ""; // clear our stored digits
+  rawAmount = "";
   editingExpenseId = null;
   document.getElementById("add-expense-button").textContent = "Add Expense";
   document.getElementById("cancel-edit-button").style.display = "none";
-  // Hide the Add Expense collapsible content after submission
   const collapsibleContent = document.querySelector("#add-expense-section .collapsible-content");
   if (collapsibleContent) {
     collapsibleContent.style.display = "none";
@@ -260,13 +257,12 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("expense-category").value = category;
   document.getElementById("expense-description").value = description;
   document.getElementById("expense-amount").value = amount.toFixed(2);
-  // Also update rawAmount based on the current amount (in cents)
   rawAmount = (amount * 100).toString();
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
   const addExpenseSection = document.getElementById("add-expense-section");
   const collapsibleContent = addExpenseSection.querySelector('.collapsible-content');
-  if (collapsibleContent && (collapsibleContent.style.display === "none" || collapsibleContent.style.display === "")) {
+  if (collapsibleContent && (!collapsibleContent.style.display || collapsibleContent.style.display === "none")) {
     collapsibleContent.style.display = "block";
     const header = addExpenseSection.querySelector('.collapsible-header');
     if (header) header.classList.add("expanded");
@@ -340,145 +336,54 @@ function loadExpenses() {
     finalExpenses.forEach(exp => {
       const formattedDate = formatDate(exp.date);
 
-      if (isMobile()) {
-        // Mobile version with swipe functionality
-        const row = document.createElement("tr");
-        row.classList.add("expense-swipe");
-        const cell = document.createElement("td");
-        cell.colSpan = 5;
-        cell.style.position = "relative";
-
-        // Create swipe actions container
-        const swipeActions = document.createElement("div");
-        swipeActions.classList.add("swipe-actions");
-
-        const editBtn = document.createElement("button");
-        editBtn.classList.add("swipe-edit");
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", () => {
-          editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
-        });
-        swipeActions.appendChild(editBtn);
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.classList.add("swipe-delete");
-        deleteBtn.textContent = "Delete";
-        deleteBtn.addEventListener("click", () => {
-          customConfirm("Swipe delete: Are you sure you want to delete this expense?")
-            .then(confirmed => {
-              if (confirmed) {
-                deleteExpense(exp.key);
-              }
-            });
-        });
-        swipeActions.appendChild(deleteBtn);
-
-        // Create swipe content container with expense details
-        const swipeContent = document.createElement("div");
-        swipeContent.classList.add("swipe-content");
-        swipeContent.innerHTML = `
-          <div class="expense-details">
-            <span class="date">${formattedDate}</span>
-            <span class="category">${exp.category}</span>
-            <span class="description">${exp.description || "—"}</span>
-            <span class="amount">$${exp.amount.toFixed(2)}</span>
-          </div>
-        `;
-
-        // Append actions and content to cell
-        cell.appendChild(swipeActions);
-        cell.appendChild(swipeContent);
-        row.appendChild(cell);
-
-        // Add touch events for swipe
-        let startX = 0, currentX = 0;
-        const threshold = 80;
-        const fullSwipeThreshold = -250;
-        swipeContent.addEventListener("touchstart", function(e) {
-          startX = e.touches[0].clientX;
-          swipeContent.style.transition = "";
-        });
-        swipeContent.addEventListener("touchmove", function(e) {
-          currentX = e.touches[0].clientX;
-          let deltaX = currentX - startX;
-          if (deltaX < 0) { // swiping left
-            swipeContent.style.transform = `translateX(${deltaX}px)`;
-          }
-        });
-        swipeContent.addEventListener("touchend", function(e) {
-          let deltaX = currentX - startX;
-          if (deltaX < fullSwipeThreshold) {
-            // Full swipe left: animate off-screen and trigger deletion
-            swipeContent.style.transition = "transform 0.3s ease";
-            swipeContent.style.transform = "translateX(-100%)";
-            customConfirm("Swipe delete: Are you sure you want to delete this expense?")
-              .then(confirmed => {
-                if (confirmed) {
-                  deleteExpense(exp.key);
-                } else {
-                  swipeContent.style.transition = "transform 0.3s ease";
-                  swipeContent.style.transform = "translateX(0)";
-                }
-              });
-          } else if (deltaX < -threshold) {
-            swipeContent.style.transition = "transform 0.3s ease";
-            swipeContent.style.transform = "translateX(-160px)";
-          } else {
-            swipeContent.style.transition = "transform 0.3s ease";
-            swipeContent.style.transform = "translateX(0)";
-          }
-        });
-        expensesTable.appendChild(row);
-      } else {
-        // Desktop version: standard table row with inline buttons
-        const row = document.createElement("tr");
-        row.classList.add("expense-swipe");
-        
-        const dateCell = document.createElement("td");
-        dateCell.textContent = formattedDate;
-        row.appendChild(dateCell);
-        
-        const categoryCell = document.createElement("td");
-        categoryCell.textContent = exp.category;
-        row.appendChild(categoryCell);
-        
-        const descCell = document.createElement("td");
-        descCell.textContent = exp.description || "—";
-        row.appendChild(descCell);
-        
-        const amountCell = document.createElement("td");
-        amountCell.textContent = `$${exp.amount.toFixed(2)}`;
-        row.appendChild(amountCell);
-        
-        const actionCell = document.createElement("td");
-        
-        const editBtn = document.createElement("button");
-        editBtn.textContent = "Edit";
-        editBtn.style.marginRight = "8px";
-        editBtn.addEventListener("click", () => {
-          editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
-        });
-        actionCell.appendChild(editBtn);
-        
-        const deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "Delete";
-        deleteBtn.addEventListener("click", () => {
-          customConfirm("Are you sure you want to delete this expense?")
-            .then(confirmed => {
-              if (confirmed) {
-                deleteExpense(exp.key);
-              }
-            });
-        });
-        actionCell.appendChild(deleteBtn);
-        
-        row.appendChild(actionCell);
-        
-        // Attach swipe-to-delete events to the delete button
-        attachSwipeToDeleteOnButton(deleteBtn, row, exp.key);
-        
-        expensesTable.appendChild(row);
-      }
+      // For both desktop and mobile, render the expense row.
+      const row = document.createElement("tr");
+      row.classList.add("expense-swipe");
+      
+      const dateCell = document.createElement("td");
+      dateCell.textContent = formattedDate;
+      row.appendChild(dateCell);
+      
+      const categoryCell = document.createElement("td");
+      categoryCell.textContent = exp.category;
+      row.appendChild(categoryCell);
+      
+      const descCell = document.createElement("td");
+      descCell.textContent = exp.description || "—";
+      row.appendChild(descCell);
+      
+      const amountCell = document.createElement("td");
+      amountCell.textContent = `$${exp.amount.toFixed(2)}`;
+      row.appendChild(amountCell);
+      
+      const actionCell = document.createElement("td");
+      
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.style.marginRight = "8px";
+      editBtn.addEventListener("click", () => {
+        editExpense(exp.key, exp.date, exp.category, exp.description, exp.amount);
+      });
+      actionCell.appendChild(editBtn);
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => {
+        customConfirm("Are you sure you want to delete this expense?")
+          .then(confirmed => {
+            if (confirmed) {
+              deleteExpense(exp.key);
+            }
+          });
+      });
+      actionCell.appendChild(deleteBtn);
+      
+      row.appendChild(actionCell);
+      
+      // Attach swipe-to-delete events even on desktop if needed.
+      attachSwipeToDeleteOnButton(deleteBtn, row, exp.key);
+      
+      expensesTable.appendChild(row);
     });
     updateTotalRow();
     updateChartDebounced();
@@ -758,12 +663,12 @@ function customConfirm(message) {
   });
 }
 
-// For mobile/desktop swipe-to-delete
+// For swipe-to-delete functionality on both mobile and desktop.
 function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   let touchStartX = 0;
   let touchDeltaX = 0;
   let dragging = false;
-  const threshold = 100; // pixels
+  const threshold = 100;
 
   deleteBtn.addEventListener('touchstart', function(e) {
     touchStartX = e.changedTouches[0].screenX;
@@ -821,14 +726,12 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 /*---------------------------
    Custom Currency Input
 ---------------------------*/
-// We use a keydown handler to capture digits and backspace.
-// This way, the user types digits only and the field always shows a value in XX.XX format.
+// This handler works on all devices.
 function setupCurrencyInput() {
   const amountInput = document.getElementById("expense-amount");
   rawAmount = "";
   amountInput.value = "0.00";
   amountInput.addEventListener("keydown", function(e) {
-    // Allow control keys without interference.
     if (["Tab", "ArrowLeft", "ArrowRight", "Delete"].includes(e.key)) {
       return;
     }
@@ -838,14 +741,12 @@ function setupCurrencyInput() {
       updateAmountDisplay();
       return;
     }
-    // Only allow digits.
     if (/^\d$/.test(e.key)) {
       e.preventDefault();
       rawAmount += e.key;
       updateAmountDisplay();
       return;
     }
-    // Prevent any other keys (including period) to maintain proper formatting.
     e.preventDefault();
   });
 }
@@ -862,8 +763,6 @@ document.addEventListener("DOMContentLoaded", function () {
   populateFilters();
   initializeChart();
   initializePieChart();
-
-  // Set up our custom currency input.
   setupCurrencyInput();
 
   document.getElementById("add-expense-button").addEventListener("click", addExpense);
