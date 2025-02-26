@@ -148,6 +148,30 @@ function populateExpenseCategoryDropdown() {
   });
 }
 
+// New function to add a category
+function addCategory() {
+  const newName = document.getElementById("new-category-name").value.trim();
+  const newMonthly = parseFloat(document.getElementById("new-category-monthly").value);
+  if (!newName || isNaN(newMonthly)) {
+    showNotification("Please enter a valid category name and monthly budget.");
+    return;
+  }
+  if (budgetCategories.some(cat => cat.name.toLowerCase() === newName.toLowerCase())) {
+    showNotification("Duplicate category name.");
+    return;
+  }
+  db.ref("categories").push({ name: newName, monthly: newMonthly })
+    .then(() => {
+      document.getElementById("new-category-name").value = "";
+      document.getElementById("new-category-monthly").value = "";
+      showNotification("Category added successfully.");
+    })
+    .catch(err => {
+      console.error("Error adding category:", err);
+      showNotification("Error adding category.");
+    });
+}
+
 /*-------------------------------------------------------------
    Budget and Expense Management
 -------------------------------------------------------------*/
@@ -857,6 +881,9 @@ document.addEventListener("DOMContentLoaded", function () {
       manageSection.style.display = "none";
     }
   });
+
+  // New: Attach event listener for add category button
+  document.getElementById("add-category-button").addEventListener("click", addCategory);
 
   document.querySelectorAll('.collapsible-header').forEach(header => {
     header.addEventListener('click', () => {
