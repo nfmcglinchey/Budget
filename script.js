@@ -826,26 +826,33 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Dark Mode Toggle Code
-  const themeToggle = document.getElementById('theme-toggle');
+  // MOBILE-STYLE THEME SWITCH SETUP
+  const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+  // Default to dark if no preference in localStorage
   if (!localStorage.getItem('theme')) {
     document.body.classList.add('dark-mode');
     localStorage.setItem('theme', 'dark');
+    themeCheckbox.checked = true;
   } else if (localStorage.getItem('theme') === 'dark') {
     document.body.classList.add('dark-mode');
+    themeCheckbox.checked = true;
   }
-  themeToggle.textContent = document.body.classList.contains('dark-mode') ? 'Switch to Light Mode' : 'Switch to Dark Mode';
-  themeToggle.addEventListener('click', function () {
-    if (document.body.classList.contains('dark-mode')) {
-      document.body.classList.remove('dark-mode');
-      localStorage.setItem('theme', 'light');
-      themeToggle.textContent = 'Switch to Dark Mode';
-    } else {
+
+  themeCheckbox.addEventListener('change', function() {
+    if (themeCheckbox.checked) {
       document.body.classList.add('dark-mode');
       localStorage.setItem('theme', 'dark');
-      themeToggle.textContent = 'Switch to Light Mode';
+    } else {
+      document.body.classList.remove('dark-mode');
+      localStorage.setItem('theme', 'light');
     }
   });
+
+  // (OLD BUTTON CODE COMMENTED OUT)
+  // const themeToggle = document.getElementById('theme-toggle');
+  // themeToggle?.addEventListener('click', function () {
+  //   ...
+  // });
 
   // Listen for input on the expense amount field and mask it as currency
   const amountField = document.getElementById("expense-amount");
