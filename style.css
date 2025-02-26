@@ -446,3 +446,17 @@ tr:hover {
         display: none;
     }
 }
+
+/* Dark Mode Styles */
+body.dark-mode {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+body.dark-mode .card {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+}
+body.dark-mode #notification {
+  background-color: #333;
+  color: #e0e0e0;
+}
