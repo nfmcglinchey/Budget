@@ -460,3 +460,75 @@ body.dark-mode #notification {
   background-color: #333;
   color: #e0e0e0;
 }
+/* Make tables more legible in dark mode */
+body.dark-mode table,
+body.dark-mode th,
+body.dark-mode td {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border-color: #555;
+}
+body.dark-mode th {
+  background-color: #3a3a3a;
+}
+body.dark-mode tr:hover {
+  background-color: #3a3a3a;
+}
+/* Keep the over/near/under-budget highlights readable */
+body.dark-mode .over-budget {
+  background-color: #ff3b30 !important;
+  color: #fff;
+}
+body.dark-mode .near-budget {
+  background-color: #ffcc00 !important;
+  color: #000;
+}
+body.dark-mode .under-budget {
+  background-color: #34c759 !important;
+  color: #fff;
+}
+
+/* MOBILE-STYLE TOGGLE SWITCH */
+.theme-switch {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+.theme-switch input {
+  display: none;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 34px;
+  top: 0; left: 0; right: 0; bottom: 0;
+  transition: 0.4s;
+}
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: 0.4s;
+}
+input:checked + .slider {
+  background-color: #1d72b8;
+}
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+.slider.round {
+  border-radius: 34px;
+}
+.slider.round:before {
+  border-radius: 50%;
+}
