@@ -842,14 +842,20 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
   
-  // Auto-format expense amount input on blur.
-  document.getElementById("expense-amount").addEventListener("blur", function(e) {
+  // Auto-format expense amount input as the user types.
+  document.getElementById("expense-amount").addEventListener("input", function(e) {
     let value = e.target.value;
     if (value) {
       if (value.indexOf('.') === -1) {
-        e.target.value = (parseFloat(value) / 100).toFixed(2);
+        let num = parseFloat(value);
+        if (!isNaN(num)) {
+          e.target.value = (num / 100).toFixed(2);
+        }
       } else {
-        e.target.value = parseFloat(value).toFixed(2);
+        let num = parseFloat(value);
+        if (!isNaN(num)) {
+          e.target.value = num.toFixed(2);
+        }
       }
     }
   });
