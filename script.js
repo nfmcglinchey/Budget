@@ -19,12 +19,10 @@ let chartUpdateTimeout = null;
 let showAllExpenses = false;
 let editingExpenseId = null;
 
-// Global variable for budget categories (loaded from Firebase)
+// Global variable for budget categories
 let budgetCategories = [];
 
-/*-------------------------------------------------------------
-   Utility Functions
--------------------------------------------------------------*/
+/* Utility Functions */
 function isMobile() {
   return ('ontouchstart' in window) || (window.innerWidth <= 768);
 }
@@ -49,9 +47,7 @@ function parseLocalDate(dateString) {
   return new Date(year, month - 1, day);
 }
 
-/*-------------------------------------------------------------
-   Category Management (stored in Firebase)
--------------------------------------------------------------*/
+/* Category Management */
 async function loadCategories() {
   try {
     db.ref("categories").on("value", snapshot => {
@@ -78,7 +74,7 @@ async function loadCategories() {
       });
       renderCategoryList();
       populateExpenseCategoryDropdown();
-      loadBudget(); // Refresh the budget table based on new categories
+      loadBudget();
     });
   } catch (error) {
     console.error("Error loading categories:", error);
@@ -99,7 +95,6 @@ function renderCategoryList() {
       const newName = prompt("Edit category name:", cat.name);
       const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
       if (newName && !isNaN(newMonthly)) {
-        // Check for duplicates when name is changed
         if (
           newName.toLowerCase() !== cat.name.toLowerCase() &&
           budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
@@ -148,7 +143,6 @@ function populateExpenseCategoryDropdown() {
   });
 }
 
-// New function to add a category
 function addCategory() {
   const newName = document.getElementById("new-category-name").value.trim();
   const newMonthly = parseFloat(document.getElementById("new-category-monthly").value);
@@ -172,9 +166,7 @@ function addCategory() {
     });
 }
 
-/*-------------------------------------------------------------
-   Budget and Expense Management
--------------------------------------------------------------*/
+/* Budget and Expense Management */
 function loadBudget() {
   const budgetTable = document.getElementById("budget-table");
   if (!budgetTable) {
@@ -217,16 +209,13 @@ function loadBudget() {
   totalRow.classList.add("total-row");
 }
 
-// --------------------- Updated addExpense() to parse currency mask
 async function addExpense() {
   try {
     const date = document.getElementById("expense-date")?.value;
     const category = document.getElementById("expense-category")?.value;
     const description = document.getElementById("expense-description")?.value.trim();
     
-    // Get the masked string from the input
     const rawAmount = document.getElementById("expense-amount")?.value;
-    // Remove everything except digits and decimal
     const numericString = rawAmount.replace(/[^0-9.]/g, '');
     const amount = parseFloat(numericString);
 
@@ -267,7 +256,6 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("expense-date").value = date;
   document.getElementById("expense-category").value = category;
   document.getElementById("expense-description").value = description;
-  // Convert numeric amount to a $xx.xx mask
   document.getElementById("expense-amount").value = `$${amount.toFixed(2)}`;
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
@@ -348,14 +336,12 @@ function loadExpenses() {
       const formattedDate = formatDate(exp.date);
 
       if (isMobile()) {
-        // Mobile version with swipe functionality
         const row = document.createElement("tr");
         row.classList.add("expense-swipe");
         const cell = document.createElement("td");
         cell.colSpan = 5;
         cell.style.position = "relative";
 
-        // Create swipe actions container
         const swipeActions = document.createElement("div");
         swipeActions.classList.add("swipe-actions");
 
@@ -380,7 +366,6 @@ function loadExpenses() {
         });
         swipeActions.appendChild(deleteBtn);
 
-        // Create swipe content container with expense details
         const swipeContent = document.createElement("div");
         swipeContent.classList.add("swipe-content");
         swipeContent.innerHTML = `
@@ -392,12 +377,10 @@ function loadExpenses() {
           </div>
         `;
 
-        // Append actions and content to cell
         cell.appendChild(swipeActions);
         cell.appendChild(swipeContent);
         row.appendChild(cell);
 
-        // Add touch events for swipe
         let startX = 0, currentX = 0;
         const threshold = 80;
         const fullSwipeThreshold = -250;
@@ -408,14 +391,13 @@ function loadExpenses() {
         swipeContent.addEventListener("touchmove", function(e) {
           currentX = e.touches[0].clientX;
           let deltaX = currentX - startX;
-          if (deltaX < 0) { // swiping left
+          if (deltaX < 0) {
             swipeContent.style.transform = `translateX(${deltaX}px)`;
           }
         });
         swipeContent.addEventListener("touchend", function(e) {
           let deltaX = currentX - startX;
           if (deltaX < fullSwipeThreshold) {
-            // Full swipe left: animate off-screen and trigger deletion
             swipeContent.style.transition = "transform 0.3s ease";
             swipeContent.style.transform = "translateX(-100%)";
             customConfirm("Swipe delete: Are you sure you want to delete this expense?")
@@ -437,7 +419,6 @@ function loadExpenses() {
         });
         expensesTable.appendChild(row);
       } else {
-        // Desktop version: standard table row with inline buttons
         const row = document.createElement("tr");
         row.classList.add("expense-swipe");
         
@@ -481,7 +462,6 @@ function loadExpenses() {
         
         row.appendChild(actionCell);
         
-        // Attach swipe-to-delete events to the delete button
         attachSwipeToDeleteOnButton(deleteBtn, row, exp.key);
         
         expensesTable.appendChild(row);
@@ -631,6 +611,7 @@ function populateFilters() {
 
 function initializeChart() {
   const ctx = document.getElementById("chart-canvas").getContext("2d");
+  const isDark = document.body.classList.contains('dark-mode');
   spendingChart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -639,18 +620,22 @@ function initializeChart() {
         {
           label: "Monthly Budget",
           data: [],
-          backgroundColor: "#1D72B8",
+          backgroundColor: isDark ? "#1d72b8" : "#1D72B8",
         },
         {
           label: "Actual Spending",
           data: [],
-          backgroundColor: "#FF3B30",
+          backgroundColor: isDark ? "#ff3b30" : "#FF3B30",
         }
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: isDark ? "#555" : "#ddd" } },
+        y: { grid: { color: isDark ? "#555" : "#ddd" } }
+      }
     }
   });
 }
@@ -765,12 +750,11 @@ function customConfirm(message) {
   });
 }
 
-// Attach swipe-to-delete events for desktop
 function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   let touchStartX = 0;
   let touchDeltaX = 0;
   let dragging = false;
-  const threshold = 100; // pixels
+  const threshold = 100;
 
   deleteBtn.addEventListener('touchstart', function(e) {
     touchStartX = e.changedTouches[0].screenX;
@@ -826,9 +810,7 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  // MOBILE-STYLE THEME SWITCH SETUP
   const themeCheckbox = document.getElementById('theme-toggle-checkbox');
-  // Default to dark if no preference in localStorage
   if (!localStorage.getItem('theme')) {
     document.body.classList.add('dark-mode');
     localStorage.setItem('theme', 'dark');
@@ -848,25 +830,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Listen for input on the expense amount field and mask it as currency
   const amountField = document.getElementById("expense-amount");
   amountField.addEventListener("input", function(e) {
-    // Remove all non-digit characters
     let digitsOnly = e.target.value.replace(/\D/g, '');
-
-    // If empty, reset
     if (!digitsOnly) {
       e.target.value = "";
       return;
     }
-
-    // Convert string of digits into an integer
     let numericValue = parseInt(digitsOnly, 10);
-
-    // Place decimal so last two digits are cents
     let dollars = numericValue / 100;
-
-    // Force two decimals, prepend dollar sign
     e.target.value = `$${dollars.toFixed(2)}`;
   });
 
@@ -904,7 +876,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // New: Attach event listener for add category button
   document.getElementById("add-category-button").addEventListener("click", addCategory);
 
   document.querySelectorAll('.collapsible-header').forEach(header => {
