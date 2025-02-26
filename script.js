@@ -49,41 +49,6 @@ function parseLocalDate(dateString) {
   return new Date(year, month - 1, day);
 }
 
-/* NEW: Format the expense amount input so it always appears in currency.
-   For example:
-   - "10" becomes "$00.10"
-   - "100" becomes "$01.00"
-   - "1000" becomes "$10.00"  */
-function formatExpenseAmountInput() {
-  const expenseAmountInput = document.getElementById("expense-amount");
-  if (!expenseAmountInput) return;
-  
-  // Remove any non-digit characters.
-  let digits = expenseAmountInput.value.replace(/\D/g, '');
-  if (!digits) {
-    expenseAmountInput.value = "$00.00";
-    return;
-  }
-  
-  let dollars = "";
-  let cents = "";
-  
-  if (digits.length > 2) {
-    dollars = digits.slice(0, digits.length - 2);
-    cents = digits.slice(-2);
-  } else {
-    dollars = "0";
-    cents = digits.padStart(2, '0');
-  }
-  
-  // Always pad the dollar amount to two digits.
-  if (dollars.length < 2) {
-    dollars = dollars.padStart(2, '0');
-  }
-  
-  expenseAmountInput.value = "$" + dollars + "." + cents;
-}
-
 /*-------------------------------------------------------------
    Category Management (stored in Firebase)
 -------------------------------------------------------------*/
@@ -233,18 +198,10 @@ async function addExpense() {
     const date = document.getElementById("expense-date")?.value;
     const category = document.getElementById("expense-category")?.value;
     const description = document.getElementById("expense-description")?.value.trim();
+    const amount = parseFloat(document.getElementById("expense-amount")?.value);
     
-    // Remove formatting characters (like "$") to extract a valid number.
-    let amountStr = document.getElementById("expense-amount")?.value.replace(/[^0-9.]/g, '');
-    const amount = parseFloat(amountStr);
-    
-    // Validate fields; if description is missing, show a specific message.
     if (!date || !category || !description || isNaN(amount) || amount <= 0) {
-      if (!description) {
-        showNotification("Expense not added: Description is required.");
-      } else {
-        showNotification("Expense not added: Please enter valid details.");
-      }
+      showNotification("Please enter valid details.");
       return;
     }
     
@@ -268,7 +225,7 @@ function resetExpenseForm() {
   document.getElementById("expense-date").value = new Date().toISOString().slice(0,10);
   document.getElementById("expense-category").selectedIndex = 0;
   document.getElementById("expense-description").value = "";
-  document.getElementById("expense-amount").value = "$00.00"; // Always show currency format.
+  document.getElementById("expense-amount").value = "";
   editingExpenseId = null;
   document.getElementById("add-expense-button").textContent = "Add Expense";
   document.getElementById("cancel-edit-button").style.display = "none";
@@ -280,7 +237,7 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("expense-date").value = date;
   document.getElementById("expense-category").value = category;
   document.getElementById("expense-description").value = description;
-  document.getElementById("expense-amount").value = "$" + parseFloat(amount).toFixed(2);
+  document.getElementById("expense-amount").value = amount;
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
   const addExpenseSection = document.getElementById("add-expense-section");
@@ -777,7 +734,6 @@ function customConfirm(message) {
   });
 }
 
-// Existing swipe-to-delete for desktop (if needed)
 function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   let touchStartX = 0;
   let touchDeltaX = 0;
@@ -838,6 +794,25 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+  // Auto-format the expense amount so that the last two digits are cents
+  document.getElementById("expense-amount").addEventListener("input", function(e) {
+    let input = e.target;
+    // Remove all non-digit characters
+    let numeric = input.value.replace(/\D/g, '');
+    if (!numeric) {
+      input.value = '';
+      return;
+    }
+    // Ensure at least three digits to have dollars and two cents
+    while(numeric.length < 3) {
+      numeric = '0' + numeric;
+    }
+    // Insert decimal before the last two digits
+    let dollars = numeric.slice(0, numeric.length - 2);
+    let cents = numeric.slice(numeric.length - 2);
+    input.value = dollars + '.' + cents;
+  });
+
   setTimeout(setDefaultDate, 500);
   loadCategories();
   populateFilters();
@@ -884,7 +859,4 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
-  
-  // NEW: Attach the currency formatting on blur for the expense amount field.
-  document.getElementById("expense-amount").addEventListener("blur", formatExpenseAmountInput);
 });
