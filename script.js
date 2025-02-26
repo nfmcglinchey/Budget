@@ -193,18 +193,24 @@ function loadBudget() {
   totalRow.classList.add("total-row");
 }
 
+// --------------------- Updated addExpense() to parse currency mask
 async function addExpense() {
   try {
     const date = document.getElementById("expense-date")?.value;
     const category = document.getElementById("expense-category")?.value;
     const description = document.getElementById("expense-description")?.value.trim();
-    const amount = parseFloat(document.getElementById("expense-amount")?.value);
     
+    // Get the masked string from the input
+    const rawAmount = document.getElementById("expense-amount")?.value;
+    // Remove everything except digits and decimal
+    const numericString = rawAmount.replace(/[^0-9.]/g, '');
+    const amount = parseFloat(numericString);
+
     if (!date || !category || !description || isNaN(amount) || amount <= 0) {
       showNotification("Please enter valid details.");
       return;
     }
-    
+
     const expenseData = { date, category, description, amount };
 
     if (editingExpenseId) {
@@ -237,7 +243,8 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("expense-date").value = date;
   document.getElementById("expense-category").value = category;
   document.getElementById("expense-description").value = description;
-  document.getElementById("expense-amount").value = amount;
+  // Convert numeric amount to a $xx.xx mask
+  document.getElementById("expense-amount").value = `$${amount.toFixed(2)}`;
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
   const addExpenseSection = document.getElementById("add-expense-section");
@@ -734,6 +741,7 @@ function customConfirm(message) {
   });
 }
 
+// Attach swipe-to-delete events for desktop
 function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   let touchStartX = 0;
   let touchDeltaX = 0;
@@ -794,23 +802,26 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Auto-format the expense amount so that the last two digits are cents
-  document.getElementById("expense-amount").addEventListener("input", function(e) {
-    let input = e.target;
+  // Listen for input on the expense amount field and mask it as currency
+  const amountField = document.getElementById("expense-amount");
+  amountField.addEventListener("input", function(e) {
     // Remove all non-digit characters
-    let numeric = input.value.replace(/\D/g, '');
-    if (!numeric) {
-      input.value = '';
+    let digitsOnly = e.target.value.replace(/\D/g, '');
+
+    // If empty, reset
+    if (!digitsOnly) {
+      e.target.value = "";
       return;
     }
-    // Ensure at least three digits to have dollars and two cents
-    while(numeric.length < 3) {
-      numeric = '0' + numeric;
-    }
-    // Insert decimal before the last two digits
-    let dollars = numeric.slice(0, numeric.length - 2);
-    let cents = numeric.slice(numeric.length - 2);
-    input.value = dollars + '.' + cents;
+
+    // Convert string of digits into an integer
+    let numericValue = parseInt(digitsOnly, 10);
+
+    // Place decimal so last two digits are cents
+    let dollars = numericValue / 100;
+
+    // Force two decimals, prepend dollar sign
+    e.target.value = `$${dollars.toFixed(2)}`;
   });
 
   setTimeout(setDefaultDate, 500);
