@@ -416,6 +416,11 @@ tr:hover {
   height: 44px;
   box-sizing: border-box;
 }
+/* NEW: Dark mode override for swipe-content */
+body.dark-mode .swipe-content {
+  background-color: #2a2a2a;
+  color: var(--text-color);
+}
 .swipe-actions {
   position: absolute;
   top: 0;
