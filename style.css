@@ -125,7 +125,6 @@ button:active {
 /* Table Styles */
 table {
     width: 100%;
-    /* min-width: 800px; remove or comment this out */
     table-layout: auto; /* let the browser figure out column widths */
     border-collapse: collapse;
     margin: 10px 0;
@@ -136,6 +135,7 @@ th, td {
     text-align: left;
     font-size: 14px;
     vertical-align: middle;
+    color: #333; /* unify text color */
 }
 th {
     background-color: #f1f1f1;
@@ -148,14 +148,13 @@ th:nth-child(5), td:nth-child(5) {
     text-align: center;
 }
 
-/* Sticky Category Column */
+/* Sticky Category Column (no forced white background) */
 #budget-table th:nth-child(1),
 #budget-table td:nth-child(1),
 #expenses-table th:nth-child(2),
 #expenses-table td:nth-child(2) {
     position: sticky;
     left: 0;
-    background: #fff;
     z-index: 2;
     font-weight: 600;
     border-right: 2px solid #ddd;
@@ -460,7 +459,6 @@ body.dark-mode #notification {
   background-color: #333;
   color: #e0e0e0;
 }
-/* Make tables more legible in dark mode */
 body.dark-mode table,
 body.dark-mode th,
 body.dark-mode td {
@@ -474,7 +472,6 @@ body.dark-mode th {
 body.dark-mode tr:hover {
   background-color: #3a3a3a;
 }
-/* Keep the over/near/under-budget highlights readable */
 body.dark-mode .over-budget {
   background-color: #ff3b30 !important;
   color: #fff;
