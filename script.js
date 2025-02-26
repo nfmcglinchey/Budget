@@ -826,6 +826,27 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+  // Dark Mode Toggle Code
+  const themeToggle = document.getElementById('theme-toggle');
+  if (!localStorage.getItem('theme')) {
+    document.body.classList.add('dark-mode');
+    localStorage.setItem('theme', 'dark');
+  } else if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+  }
+  themeToggle.textContent = document.body.classList.contains('dark-mode') ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+  themeToggle.addEventListener('click', function () {
+    if (document.body.classList.contains('dark-mode')) {
+      document.body.classList.remove('dark-mode');
+      localStorage.setItem('theme', 'light');
+      themeToggle.textContent = 'Switch to Dark Mode';
+    } else {
+      document.body.classList.add('dark-mode');
+      localStorage.setItem('theme', 'dark');
+      themeToggle.textContent = 'Switch to Light Mode';
+    }
+  });
+
   // Listen for input on the expense amount field and mask it as currency
   const amountField = document.getElementById("expense-amount");
   amountField.addEventListener("input", function(e) {
