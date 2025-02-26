@@ -841,4 +841,16 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
+  
+  // Auto-format expense amount input on blur.
+  document.getElementById("expense-amount").addEventListener("blur", function(e) {
+    let value = e.target.value;
+    if (value) {
+      if (value.indexOf('.') === -1) {
+        e.target.value = (parseFloat(value) / 100).toFixed(2);
+      } else {
+        e.target.value = parseFloat(value).toFixed(2);
+      }
+    }
+  });
 });
