@@ -453,23 +453,25 @@ body, .card, input, button, table, th, td, #notification, .modal-content {
 
 /* Dark Mode Styles */
 body.dark-mode {
-  /* Subtle gradient background for depth */
-  background: linear-gradient(135deg, #1c1c1c, #121212);
+  background-color: #121212;
   color: #e0e0e0;
 }
 
+/* Cards with a subtle border for separation */
 body.dark-mode .card {
-  background-color: #1f1f1f;
+  background-color: #1e1e1e;
   color: #e0e0e0;
-  /* Enhanced shadow for depth */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+  border: 1px solid #333; /* added for depth */
 }
 
+/* Notification styling with a slight border */
 body.dark-mode #notification {
   background-color: #333;
   color: #e0e0e0;
+  border: 1px solid #444;
 }
 
+/* Tables: set a base dark cell background and clear borders */
 body.dark-mode table,
 body.dark-mode th,
 body.dark-mode td {
@@ -478,49 +480,32 @@ body.dark-mode td {
   border-color: #555;
 }
 
+/* Table header gets a slightly lighter background */
 body.dark-mode th {
-  /* Lighter header for better readability */
-  background-color: #4a4a4a;
-}
-
-body.dark-mode tr:hover {
   background-color: #3a3a3a;
 }
 
-/* Dark mode styling for interactive elements */
-body.dark-mode input,
-body.dark-mode select,
+/* Table row hover: use a distinct, slightly lighter shade */
+body.dark-mode tr:hover {
+  background-color: #343434;
+}
+
+/* Dark mode button styling */
 body.dark-mode button {
-  background-color: #2a2a2a;
-  border: 1px solid #444;
-  color: #e0e0e0;
-}
-
-body.dark-mode button:hover {
-  /* A darker variant or a contrasting color for hover state */
   background-color: #1d72b8;
-}
-
-body.dark-mode .modal-content {
-  background-color: #1e1e1e;
-  color: #e0e0e0;
-  border: 1px solid #444;
-}
-
-/* Budget status remains unchanged */
-body.dark-mode .over-budget {
-  background-color: #ff3b30 !important;
   color: #fff;
+  border: none;
+}
+body.dark-mode button:hover {
+  background-color: #3a8edb;
 }
 
-body.dark-mode .near-budget {
-  background-color: #ffcc00 !important;
-  color: #000;
+/* Optional: Link styling for dark mode */
+body.dark-mode a {
+  color: #64b5f6;
 }
-
-body.dark-mode .under-budget {
-  background-color: #34c759 !important;
-  color: #fff;
+body.dark-mode a:hover {
+  color: #90caf9;
 }
 
 /* MOBILE-STYLE TOGGLE SWITCH */
