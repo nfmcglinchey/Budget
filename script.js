@@ -19,8 +19,8 @@ let chartUpdateTimeout = null;
 let showAllExpenses = false;
 let editingExpenseId = null;
 
-// Global variable for budget categories (loaded from Firebase)
-let budgetCategories = [];
+// We'll store the raw digits for the amount field here.
+let rawAmount = "";
 
 /*-------------------------------------------------------------
    Utility Functions
@@ -225,7 +225,8 @@ function resetExpenseForm() {
   document.getElementById("expense-date").value = new Date().toISOString().slice(0,10);
   document.getElementById("expense-category").selectedIndex = 0;
   document.getElementById("expense-description").value = "";
-  document.getElementById("expense-amount").value = "";
+  document.getElementById("expense-amount").value = "0.00";
+  rawAmount = ""; // clear our stored digits
   editingExpenseId = null;
   document.getElementById("add-expense-button").textContent = "Add Expense";
   document.getElementById("cancel-edit-button").style.display = "none";
@@ -237,7 +238,9 @@ function editExpense(expenseId, date, category, description, amount) {
   document.getElementById("expense-date").value = date;
   document.getElementById("expense-category").value = category;
   document.getElementById("expense-description").value = description;
-  document.getElementById("expense-amount").value = amount;
+  document.getElementById("expense-amount").value = amount.toFixed(2);
+  // Also update rawAmount based on the current amount (in cents)
+  rawAmount = (amount * 100).toString();
   document.getElementById("add-expense-button").textContent = "Update Expense";
   document.getElementById("cancel-edit-button").style.display = "inline-block";
   const addExpenseSection = document.getElementById("add-expense-section");
@@ -734,7 +737,7 @@ function customConfirm(message) {
   });
 }
 
-// Existing swipe-to-delete for desktop (if needed)
+// For mobile/desktop swipe-to-delete
 function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   let touchStartX = 0;
   let touchDeltaX = 0;
@@ -794,12 +797,55 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
   });
 }
 
+/*---------------------------
+   Custom Currency Input
+---------------------------*/
+// Instead of reformatting on every "input" event (which was locking input),
+// we use a keydown handler to capture digits and backspace.
+// This way, the user types digits only and the field always shows a value in XX.XX format.
+function setupCurrencyInput() {
+  const amountInput = document.getElementById("expense-amount");
+  // Clear any pre-existing rawAmount.
+  rawAmount = "";
+  amountInput.value = "0.00";
+  amountInput.addEventListener("keydown", function(e) {
+    // Allow control keys without interference.
+    if (["Tab", "ArrowLeft", "ArrowRight", "Delete"].includes(e.key)) {
+      return;
+    }
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      rawAmount = rawAmount.slice(0, -1);
+      updateAmountDisplay();
+      return;
+    }
+    // Only allow digits.
+    if (/^\d$/.test(e.key)) {
+      e.preventDefault();
+      rawAmount += e.key;
+      updateAmountDisplay();
+      return;
+    }
+    // Prevent any other keys (including period) to maintain proper formatting.
+    e.preventDefault();
+  });
+}
+
+function updateAmountDisplay() {
+  const amountInput = document.getElementById("expense-amount");
+  let num = rawAmount === "" ? 0 : parseInt(rawAmount, 10);
+  amountInput.value = (num / 100).toFixed(2);
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   setTimeout(setDefaultDate, 500);
   loadCategories();
   populateFilters();
   initializeChart();
   initializePieChart();
+
+  // Set up our custom currency input.
+  setupCurrencyInput();
 
   document.getElementById("add-expense-button").addEventListener("click", addExpense);
 
@@ -840,23 +886,5 @@ document.addEventListener("DOMContentLoaded", function () {
         header.classList.remove("expanded");
       }
     });
-  });
-  
-  // Auto-format expense amount input as the user types.
-  document.getElementById("expense-amount").addEventListener("input", function(e) {
-    let value = e.target.value;
-    if (value) {
-      if (value.indexOf('.') === -1) {
-        let num = parseFloat(value);
-        if (!isNaN(num)) {
-          e.target.value = (num / 100).toFixed(2);
-        }
-      } else {
-        let num = parseFloat(value);
-        if (!isNaN(num)) {
-          e.target.value = num.toFixed(2);
-        }
-      }
-    }
   });
 });
