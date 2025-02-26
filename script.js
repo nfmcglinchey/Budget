@@ -200,8 +200,21 @@ async function addExpense() {
     const description = document.getElementById("expense-description")?.value.trim();
     const amount = parseFloat(document.getElementById("expense-amount")?.value);
     
-    if (!date || !category || !description || isNaN(amount) || amount <= 0) {
-      showNotification("Please enter valid details.");
+    // Check each field and show a specific message if something's missing.
+    if (!date) {
+      showNotification("Please select a date.");
+      return;
+    }
+    if (!category) {
+      showNotification("Please select a category.");
+      return;
+    }
+    if (!description) {
+      showNotification("Description is required.");
+      return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+      showNotification("Please enter a valid amount.");
       return;
     }
     
@@ -230,7 +243,15 @@ function resetExpenseForm() {
   editingExpenseId = null;
   document.getElementById("add-expense-button").textContent = "Add Expense";
   document.getElementById("cancel-edit-button").style.display = "none";
-  document.getElementById("add-expense-section").classList.remove("editing-mode");
+  // Hide the Add Expense collapsible content after submission
+  const collapsibleContent = document.querySelector("#add-expense-section .collapsible-content");
+  if (collapsibleContent) {
+    collapsibleContent.style.display = "none";
+  }
+  const header = document.querySelector("#add-expense-section .collapsible-header");
+  if (header) {
+    header.classList.remove("expanded");
+  }
 }
 
 function editExpense(expenseId, date, category, description, amount) {
@@ -800,12 +821,10 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 /*---------------------------
    Custom Currency Input
 ---------------------------*/
-// Instead of reformatting on every "input" event (which was locking input),
-// we use a keydown handler to capture digits and backspace.
+// We use a keydown handler to capture digits and backspace.
 // This way, the user types digits only and the field always shows a value in XX.XX format.
 function setupCurrencyInput() {
   const amountInput = document.getElementById("expense-amount");
-  // Clear any pre-existing rawAmount.
   rawAmount = "";
   amountInput.value = "0.00";
   amountInput.addEventListener("keydown", function(e) {
