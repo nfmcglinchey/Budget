@@ -519,9 +519,9 @@ body.dark-mode .under-budget {
 
 /* Mobile-Style Toggle Switch */
 .theme-switch {
-  position: fixed;
-  top: 10px;
-  right: 10px;
+  position: fixed !important;
+  top: 10px !important;
+  right: 10px !important;
   z-index: 1000;
   display: inline-block;
   width: 50px;
