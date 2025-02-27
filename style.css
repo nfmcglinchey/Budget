@@ -526,6 +526,8 @@ body.dark-mode .under-budget {
   display: inline-block;
   width: 50px;
   height: 24px;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
 }
 .theme-switch input {
   display: none;
