@@ -268,7 +268,7 @@ tr:hover {
   #budget-table td:nth-child(1),
   #expenses-table th:nth-child(2),
   #expenses-table td:nth-child(2) {
-    /*min-width: 160px;
+    /*min-width: 160px;*/
     max-width: 180px;
   }
   table {
