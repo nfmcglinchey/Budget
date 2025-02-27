@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#1d72b8">
   <!-- iOS PWA meta tags -->
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>Budget Tracker</title>
@@ -19,11 +19,13 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <!-- MOBILE-STYLE THEME SWITCH -->
-  <label class="theme-switch" for="theme-toggle-checkbox">
-    <input type="checkbox" id="theme-toggle-checkbox" />
-    <span class="slider round"></span>
-  </label>
+  <!-- Fixed container for the mobile-style theme switch -->
+  <div class="toggle-container">
+    <label class="theme-switch" for="theme-toggle-checkbox">
+      <input type="checkbox" id="theme-toggle-checkbox" />
+      <span class="slider round"></span>
+    </label>
+  </div>
 
   <h1>Budget Tracker</h1>
 
