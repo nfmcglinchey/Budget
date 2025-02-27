@@ -95,6 +95,7 @@ function renderCategoryList() {
       const newName = prompt("Edit category name:", cat.name);
       const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
       if (newName && !isNaN(newMonthly)) {
+        // Prevent duplicate names if the name is changing
         if (
           newName.toLowerCase() !== cat.name.toLowerCase() &&
           budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
@@ -102,11 +103,57 @@ function renderCategoryList() {
           showNotification("Duplicate category name. Please enter a unique category.");
           return;
         }
-        db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly })
-          .catch(error => {
-            console.error("Error updating category:", error);
-            showNotification("Error updating category.");
-          });
+        // If the category name has changed, ask if expenses should be updated
+        if (newName.toLowerCase() !== cat.name.toLowerCase()) {
+          customConfirm("Would you like to update all previous expenses under this category?")
+            .then(confirmed => {
+              if (confirmed) {
+                // Update all expenses with the old category name to the new one.
+                db.ref("expenses")
+                  .orderByChild("category")
+                  .equalTo(cat.name)
+                  .once("value")
+                  .then(snapshot => {
+                    snapshot.forEach(childSnapshot => {
+                      childSnapshot.ref.update({ category: newName });
+                    });
+                  })
+                  .then(() => {
+                    // Now update the category record.
+                    return db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
+                  })
+                  .then(() => {
+                    showNotification("Category and related expenses updated successfully.");
+                  })
+                  .catch(error => {
+                    console.error("Error updating category or expenses:", error);
+                    showNotification("Error updating category or expenses.");
+                  });
+              } else {
+                // Only update the category record.
+                db.ref("categories/" + cat.id)
+                  .update({ name: newName, monthly: newMonthly })
+                  .then(() => {
+                    showNotification("Category updated successfully.");
+                  })
+                  .catch(error => {
+                    console.error("Error updating category:", error);
+                    showNotification("Error updating category.");
+                  });
+              }
+            });
+        } else {
+          // If only the monthly budget changed, update just that.
+          db.ref("categories/" + cat.id)
+            .update({ monthly: newMonthly })
+            .then(() => {
+              showNotification("Category updated successfully.");
+            })
+            .catch(error => {
+              console.error("Error updating category:", error);
+              showNotification("Error updating category.");
+            });
+        }
       } else {
         showNotification("Invalid input for editing category.");
       }
