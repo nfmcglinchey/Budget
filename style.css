@@ -189,9 +189,19 @@ th:nth-child(5), td:nth-child(5) {
   text-align: center;
 }
 
-/* Sticky Category Column */
+/* Sticky Column Adjustments */
+
+/* For Budget table: make first column sticky but with a lower z-index so other columns overlap it */
 #budget-table th:nth-child(1),
-#budget-table td:nth-child(1),
+#budget-table td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 0; /* Lower stacking order so it goes underneath subsequent columns */
+  background-color: var(--card-bg);
+  border-right: none !important;
+}
+
+/* For Expenses table: keep sticky for the second column as before */
 #expenses-table th:nth-child(2),
 #expenses-table td:nth-child(2) {
   position: sticky;
@@ -519,9 +529,9 @@ body.dark-mode .under-budget {
 
 /* Fixed Toggle Container for Theme Switch */
 .toggle-container {
-  position: absolute;
-  top: calc(env(safe-area-inset-top) + 30px);
-  right: 25px;
+  position: absolute; /* now part of the page flow */
+  top: calc(env(safe-area-inset-top) + 60px);
+  right: 10px;
   width: 50px;
   height: 24px;
   z-index: 1000;
