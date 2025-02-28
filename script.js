@@ -1035,101 +1035,22 @@ function attachSwipeToDeleteOnButton(deleteBtn, row, expenseId) {
 
 document.addEventListener("DOMContentLoaded", function () {
   const themeCheckbox = document.getElementById('theme-toggle-checkbox');
-  if (!localStorage.getItem('theme')) {
-    document.body.classList.add('dark-mode');
-    localStorage.setItem('theme', 'dark');
-    themeCheckbox.checked = true;
-  } else if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark-mode');
-    themeCheckbox.checked = true;
-  }
 
-  themeCheckbox.addEventListener('change', function() {
-    if (themeCheckbox.checked) {
+  // If theme is already set in localStorage, apply it.
+  // Otherwise, use geolocation to decide.
+  if (localStorage.getItem('theme')) {
+    if (localStorage.getItem('theme') === 'dark') {
       document.body.classList.add('dark-mode');
-      localStorage.setItem('theme', 'dark');
+      themeCheckbox.checked = true;
     } else {
       document.body.classList.remove('dark-mode');
-      localStorage.setItem('theme', 'light');
+      themeCheckbox.checked = false;
     }
-  });
-
-  const amountField = document.getElementById("expense-amount");
-  amountField.addEventListener("input", function(e) {
-    let digitsOnly = e.target.value.replace(/\D/g, '');
-    if (!digitsOnly) {
-      e.target.value = "";
-      return;
-    }
-    let numericValue = parseInt(digitsOnly, 10);
-    let dollars = numericValue / 100;
-    e.target.value = `$${dollars.toFixed(2)}`;
-  });
-
-  setTimeout(setDefaultDate, 500);
-  loadCategories();
-  populateFilters();
-  initializeChart();
-  initializePieChart();
-
-  document.getElementById("add-expense-button").addEventListener("click", addExpense);
-
-  const cancelEditButton = document.getElementById("cancel-edit-button");
-  if (cancelEditButton) {
-    cancelEditButton.addEventListener("click", cancelEdit);
-  }
-
-  document.getElementById("filter-month").addEventListener("change", loadExpenses);
-  document.getElementById("filter-year").addEventListener("change", loadExpenses);
-
-  const toggleButton = document.getElementById("toggle-expenses-button");
-  if (toggleButton) {
-    toggleButton.addEventListener("click", () => {
-      showAllExpenses = !showAllExpenses;
-      loadExpenses();
-    });
-  }
-
-  const toggleManageBtn = document.getElementById("toggle-manage-categories");
-  const manageSection = document.getElementById("manage-categories");
-  toggleManageBtn.addEventListener("click", () => {
-    if (manageSection.style.display === "none" || manageSection.style.display === "") {
-      manageSection.style.display = "block";
-    } else {
-      manageSection.style.display = "none";
-    }
-  });
-
-  document.getElementById("add-category-button").addEventListener("click", addCategory);
-
-  document.querySelectorAll('.collapsible-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const content = header.nextElementSibling;
-      if (content.style.display === "none" || content.style.display === "") {
-        content.style.display = "block";
-        header.classList.add("expanded");
-      } else {
-        content.style.display = "none";
-        header.classList.remove("expanded");
-      }
-    });
-  });
-});
-
-document.addEventListener("DOMContentLoaded", function () {
-  const themeCheckbox = document.getElementById('theme-toggle-checkbox');
-
-  // Remove default forcing of dark mode; use geolocation to set the theme.
-  if (!localStorage.getItem('theme')) {
-    getUserLocation();
-  } else if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark-mode');
-    themeCheckbox.checked = true;
   } else {
-    document.body.classList.remove('dark-mode');
-    themeCheckbox.checked = false;
+    getUserLocation();
   }
 
+  // Toggle theme manually
   themeCheckbox.addEventListener('change', function() {
     if (themeCheckbox.checked) {
       document.body.classList.add('dark-mode');
@@ -1140,6 +1061,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+  // Function to get user location and set theme based on sunrise/sunset
   function getUserLocation() {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -1148,20 +1070,21 @@ document.addEventListener("DOMContentLoaded", function () {
           fetchSunriseSunset(latitude, longitude);
         },
         function () {
-          // If geolocation permission is denied, default to light mode.
+          // If permission is denied, default to light mode.
           document.body.classList.remove('dark-mode');
           themeCheckbox.checked = false;
           localStorage.setItem('theme', 'light');
         }
       );
     } else {
-      // If not supported, default to light mode.
+      // If geolocation is not supported, default to light mode.
       document.body.classList.remove('dark-mode');
       themeCheckbox.checked = false;
       localStorage.setItem('theme', 'light');
     }
   }
 
+  // Fetch sunrise/sunset times and set theme accordingly
   function fetchSunriseSunset(lat, lon) {
     const apiUrl = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`;
     fetch(apiUrl)
@@ -1171,7 +1094,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const sunset = new Date(data.results.sunset);
         const now = new Date();
 
-        // Remove the extra localOffset subtraction
+        // If current time is before sunrise or after sunset, set dark mode.
         if (now < sunrise || now > sunset) {
           document.body.classList.add('dark-mode');
           themeCheckbox.checked = true;
@@ -1190,4 +1113,46 @@ document.addEventListener("DOMContentLoaded", function () {
         localStorage.setItem('theme', 'light');
       });
   }
+
+  // Other initializations
+  setTimeout(setDefaultDate, 500);
+  loadCategories();
+  populateFilters();
+  initializeChart();
+  initializePieChart();
+
+  document.getElementById("add-expense-button").addEventListener("click", addExpense);
+  
+  const cancelEditButton = document.getElementById("cancel-edit-button");
+  if (cancelEditButton) {
+    cancelEditButton.addEventListener("click", cancelEdit);
+  }
+  
+  document.getElementById("filter-month").addEventListener("change", loadExpenses);
+  document.getElementById("filter-year").addEventListener("change", loadExpenses);
+  
+  const toggleButton = document.getElementById("toggle-expenses-button");
+  if (toggleButton) {
+    toggleButton.addEventListener("click", () => {
+      showAllExpenses = !showAllExpenses;
+      loadExpenses();
+    });
+  }
+  
+  const toggleManageBtn = document.getElementById("toggle-manage-categories");
+  const manageSection = document.getElementById("manage-categories");
+  toggleManageBtn.addEventListener("click", () => {
+    manageSection.style.display = (manageSection.style.display === "none" || manageSection.style.display === "") ? "block" : "none";
+  });
+  
+  document.getElementById("add-category-button").addEventListener("click", addCategory);
+  
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const content = header.nextElementSibling;
+      content.style.display = (content.style.display === "none" || content.style.display === "") ? "block" : "none";
+      header.classList.toggle("expanded");
+    });
+  });
 });
+
