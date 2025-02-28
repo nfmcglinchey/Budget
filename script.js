@@ -86,7 +86,6 @@ async function loadCategories() {
 /* Updated renderCategoryList() function */
 function renderCategoryList() {
   const container = document.getElementById("category-list");
-  // Clear previous content and create a table element
   container.innerHTML = "";
   const table = document.createElement("table");
   table.id = "category-table";
@@ -98,19 +97,18 @@ function renderCategoryList() {
     </tr>
   `;
   
-  // Loop through each category and create a row
   budgetCategories.forEach((cat) => {
     const monthlyVal = parseFloat(cat.monthly).toFixed(2);
     let row = document.createElement("tr");
     
     if (isMobile()) {
-      // For mobile: create one cell with swipe actions.
-      row.classList.add("expense-swipe"); // reuse similar styling as expenses
+      // Mobile: one cell with swipe actions and the deletion threshold.
+      row.classList.add("expense-swipe");
       const cell = document.createElement("td");
       cell.colSpan = 3;
       cell.style.position = "relative";
       
-      // Create swipe actions container
+      // Swipe actions container
       const swipeActions = document.createElement("div");
       swipeActions.classList.add("swipe-actions");
       
@@ -197,7 +195,7 @@ function renderCategoryList() {
       });
       swipeActions.appendChild(deleteBtn);
       
-      // Create the swipe content that shows the category details
+      // Swipe content that displays category details
       const swipeContent = document.createElement("div");
       swipeContent.classList.add("swipe-content");
       swipeContent.innerHTML = `
@@ -211,14 +209,16 @@ function renderCategoryList() {
       cell.appendChild(swipeContent);
       row.appendChild(cell);
       
-      // Add touch event listeners for swipe functionality
+      // Define thresholds for sliding deletion
       let startX = 0, currentX = 0;
       const threshold = 80;
       const fullSwipeThreshold = -250;
+      
       swipeContent.addEventListener("touchstart", function(e) {
         startX = e.touches[0].clientX;
         swipeContent.style.transition = "";
       });
+      
       swipeContent.addEventListener("touchmove", function(e) {
         currentX = e.touches[0].clientX;
         let deltaX = currentX - startX;
@@ -226,6 +226,7 @@ function renderCategoryList() {
           swipeContent.style.transform = `translateX(${deltaX}px)`;
         }
       });
+      
       swipeContent.addEventListener("touchend", function(e) {
         let deltaX = currentX - startX;
         if (deltaX < fullSwipeThreshold) {
@@ -252,8 +253,9 @@ function renderCategoryList() {
           swipeContent.style.transform = "translateX(0)";
         }
       });
+      
     } else {
-      // For desktop: create three cells
+      // Desktop: three cells for category, budget, and actions.
       const nameCell = document.createElement("td");
       nameCell.textContent = cat.name;
       row.appendChild(nameCell);
