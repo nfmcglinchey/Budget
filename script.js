@@ -75,6 +75,7 @@ async function loadCategories() {
       renderCategoryList();
       populateExpenseCategoryDropdown();
       loadBudget();
+      loadExpenses(); // <-- Added this line to recalculate actual spending
     });
   } catch (error) {
     console.error("Error loading categories:", error);
