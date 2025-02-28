@@ -75,7 +75,7 @@ async function loadCategories() {
       renderCategoryList();
       populateExpenseCategoryDropdown();
       loadBudget();
-      loadExpenses(); // <-- Added this line to recalculate actual spending
+      loadExpenses(); // ensures expenses recalc after categories update
     });
   } catch (error) {
     console.error("Error loading categories:", error);
@@ -83,101 +83,275 @@ async function loadCategories() {
   }
 }
 
+/* Updated renderCategoryList() function */
 function renderCategoryList() {
-  const categoryList = document.getElementById("category-list");
-  categoryList.innerHTML = "";
+  const container = document.getElementById("category-list");
+  // Clear previous content and create a table element
+  container.innerHTML = "";
+  const table = document.createElement("table");
+  table.id = "category-table";
+  table.innerHTML = `
+    <tr>
+      <th>Category</th>
+      <th>Monthly Budget</th>
+      <th>Actions</th>
+    </tr>
+  `;
+  
+  // Loop through each category and create a row
   budgetCategories.forEach((cat) => {
-    const li = document.createElement("li");
-    li.textContent = `${cat.name} - $${parseFloat(cat.monthly).toFixed(2)}`;
+    const monthlyVal = parseFloat(cat.monthly).toFixed(2);
+    let row = document.createElement("tr");
     
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => {
-      const newName = prompt("Edit category name:", cat.name);
-      const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
-      if (newName && !isNaN(newMonthly)) {
-        // Prevent duplicate names if the name is changing
-        if (
-          newName.toLowerCase() !== cat.name.toLowerCase() &&
-          budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
-        ) {
-          showNotification("Duplicate category name. Please enter a unique category.");
-          return;
-        }
-        // If the category name has changed, ask if expenses should be updated
-        if (newName.toLowerCase() !== cat.name.toLowerCase()) {
-          customConfirm("Would you like to update all previous expenses under this category?")
-            .then(confirmed => {
-              if (confirmed) {
-                // Update all expenses with the old category name to the new one.
-                db.ref("expenses")
-                  .orderByChild("category")
-                  .equalTo(cat.name)
-                  .once("value")
-                  .then(snapshot => {
-                    snapshot.forEach(childSnapshot => {
-                      childSnapshot.ref.update({ category: newName });
+    if (isMobile()) {
+      // For mobile: create one cell with swipe actions.
+      row.classList.add("expense-swipe"); // reuse similar styling as expenses
+      const cell = document.createElement("td");
+      cell.colSpan = 3;
+      cell.style.position = "relative";
+      
+      // Create swipe actions container
+      const swipeActions = document.createElement("div");
+      swipeActions.classList.add("swipe-actions");
+      
+      const editBtn = document.createElement("button");
+      editBtn.classList.add("swipe-edit");
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => {
+        const newName = prompt("Edit category name:", cat.name);
+        const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
+        if (newName && !isNaN(newMonthly)) {
+          if (
+            newName.toLowerCase() !== cat.name.toLowerCase() &&
+            budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
+          ) {
+            showNotification("Duplicate category name. Please enter a unique category.");
+            return;
+          }
+          if (newName.toLowerCase() !== cat.name.toLowerCase()) {
+            customConfirm("Would you like to update all previous expenses under this category?")
+              .then(confirmed => {
+                if (confirmed) {
+                  db.ref("expenses")
+                    .orderByChild("category")
+                    .equalTo(cat.name)
+                    .once("value")
+                    .then(snapshot => {
+                      snapshot.forEach(childSnapshot => {
+                        childSnapshot.ref.update({ category: newName });
+                      });
+                    })
+                    .then(() => {
+                      return db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
+                    })
+                    .then(() => {
+                      showNotification("Category and related expenses updated successfully.");
+                    })
+                    .catch(error => {
+                      console.error("Error updating category or expenses:", error);
+                      showNotification("Error updating category or expenses.");
                     });
-                  })
-                  .then(() => {
-                    // Now update the category record.
-                    return db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
-                  })
-                  .then(() => {
-                    showNotification("Category and related expenses updated successfully.");
-                  })
-                  .catch(error => {
-                    console.error("Error updating category or expenses:", error);
-                    showNotification("Error updating category or expenses.");
-                  });
-              } else {
-                // Only update the category record.
-                db.ref("categories/" + cat.id)
-                  .update({ name: newName, monthly: newMonthly })
-                  .then(() => {
-                    showNotification("Category updated successfully.");
-                  })
-                  .catch(error => {
-                    console.error("Error updating category:", error);
-                    showNotification("Error updating category.");
-                  });
-              }
-            });
+                } else {
+                  db.ref("categories/" + cat.id)
+                    .update({ name: newName, monthly: newMonthly })
+                    .then(() => {
+                      showNotification("Category updated successfully.");
+                    })
+                    .catch(error => {
+                      console.error("Error updating category:", error);
+                      showNotification("Error updating category.");
+                    });
+                }
+              });
+          } else {
+            db.ref("categories/" + cat.id)
+              .update({ monthly: newMonthly })
+              .then(() => {
+                showNotification("Category updated successfully.");
+              })
+              .catch(error => {
+                console.error("Error updating category:", error);
+                showNotification("Error updating category.");
+              });
+          }
         } else {
-          // If only the monthly budget changed, update just that.
-          db.ref("categories/" + cat.id)
-            .update({ monthly: newMonthly })
-            .then(() => {
-              showNotification("Category updated successfully.");
-            })
-            .catch(error => {
-              console.error("Error updating category:", error);
-              showNotification("Error updating category.");
-            });
-        }
-      } else {
-        showNotification("Invalid input for editing category.");
-      }
-    });
-    li.appendChild(editBtn);
-    
-    const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "Delete";
-    deleteBtn.addEventListener("click", () => {
-      customConfirm("Delete this category?").then(confirmed => {
-        if (confirmed) {
-          db.ref("categories/" + cat.id).remove()
-            .catch(error => {
-              console.error("Error deleting category:", error);
-              showNotification("Error deleting category.");
-            });
+          showNotification("Invalid input for editing category.");
         }
       });
-    });
-    li.appendChild(deleteBtn);
+      swipeActions.appendChild(editBtn);
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.classList.add("swipe-delete");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => {
+        customConfirm("Delete this category?")
+          .then(confirmed => {
+            if (confirmed) {
+              db.ref("categories/" + cat.id).remove()
+                .catch(error => {
+                  console.error("Error deleting category:", error);
+                  showNotification("Error deleting category.");
+                });
+            }
+          });
+      });
+      swipeActions.appendChild(deleteBtn);
+      
+      // Create the swipe content that shows the category details
+      const swipeContent = document.createElement("div");
+      swipeContent.classList.add("swipe-content");
+      swipeContent.innerHTML = `
+        <div class="expense-details">
+          <span class="date">${cat.name}</span>
+          <span class="amount">$${monthlyVal}</span>
+        </div>
+      `;
+      
+      cell.appendChild(swipeActions);
+      cell.appendChild(swipeContent);
+      row.appendChild(cell);
+      
+      // Add touch event listeners for swipe functionality
+      let startX = 0, currentX = 0;
+      const threshold = 80;
+      const fullSwipeThreshold = -250;
+      swipeContent.addEventListener("touchstart", function(e) {
+        startX = e.touches[0].clientX;
+        swipeContent.style.transition = "";
+      });
+      swipeContent.addEventListener("touchmove", function(e) {
+        currentX = e.touches[0].clientX;
+        let deltaX = currentX - startX;
+        if (deltaX < 0) {
+          swipeContent.style.transform = `translateX(${deltaX}px)`;
+        }
+      });
+      swipeContent.addEventListener("touchend", function(e) {
+        let deltaX = currentX - startX;
+        if (deltaX < fullSwipeThreshold) {
+          swipeContent.style.transition = "transform 0.3s ease";
+          swipeContent.style.transform = "translateX(-100%)";
+          customConfirm("Swipe delete: Are you sure you want to delete this category?")
+            .then(confirmed => {
+              if (confirmed) {
+                db.ref("categories/" + cat.id).remove()
+                  .catch(error => {
+                    console.error("Error deleting category:", error);
+                    showNotification("Error deleting category.");
+                  });
+              } else {
+                swipeContent.style.transition = "transform 0.3s ease";
+                swipeContent.style.transform = "translateX(0)";
+              }
+            });
+        } else if (deltaX < -threshold) {
+          swipeContent.style.transition = "transform 0.3s ease";
+          swipeContent.style.transform = "translateX(-160px)";
+        } else {
+          swipeContent.style.transition = "transform 0.3s ease";
+          swipeContent.style.transform = "translateX(0)";
+        }
+      });
+    } else {
+      // For desktop: create three cells
+      const nameCell = document.createElement("td");
+      nameCell.textContent = cat.name;
+      row.appendChild(nameCell);
+      
+      const budgetCell = document.createElement("td");
+      budgetCell.textContent = `$${monthlyVal}`;
+      row.appendChild(budgetCell);
+      
+      const actionCell = document.createElement("td");
+      
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.style.marginRight = "8px";
+      editBtn.addEventListener("click", () => {
+        const newName = prompt("Edit category name:", cat.name);
+        const newMonthly = parseFloat(prompt("Edit monthly budget:", cat.monthly));
+        if (newName && !isNaN(newMonthly)) {
+          if (
+            newName.toLowerCase() !== cat.name.toLowerCase() &&
+            budgetCategories.some(c => c.name.toLowerCase() === newName.toLowerCase())
+          ) {
+            showNotification("Duplicate category name. Please enter a unique category.");
+            return;
+          }
+          if (newName.toLowerCase() !== cat.name.toLowerCase()) {
+            customConfirm("Would you like to update all previous expenses under this category?")
+              .then(confirmed => {
+                if (confirmed) {
+                  db.ref("expenses")
+                    .orderByChild("category")
+                    .equalTo(cat.name)
+                    .once("value")
+                    .then(snapshot => {
+                      snapshot.forEach(childSnapshot => {
+                        childSnapshot.ref.update({ category: newName });
+                      });
+                    })
+                    .then(() => {
+                      return db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
+                    })
+                    .then(() => {
+                      showNotification("Category and related expenses updated successfully.");
+                    })
+                    .catch(error => {
+                      console.error("Error updating category or expenses:", error);
+                      showNotification("Error updating category or expenses.");
+                    });
+                } else {
+                  db.ref("categories/" + cat.id)
+                    .update({ name: newName, monthly: newMonthly })
+                    .then(() => {
+                      showNotification("Category updated successfully.");
+                    })
+                    .catch(error => {
+                      console.error("Error updating category:", error);
+                      showNotification("Error updating category.");
+                    });
+                }
+              });
+          } else {
+            db.ref("categories/" + cat.id)
+              .update({ monthly: newMonthly })
+              .then(() => {
+                showNotification("Category updated successfully.");
+              })
+              .catch(error => {
+                console.error("Error updating category:", error);
+                showNotification("Error updating category.");
+              });
+          }
+        } else {
+          showNotification("Invalid input for editing category.");
+        }
+      });
+      actionCell.appendChild(editBtn);
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => {
+        customConfirm("Delete this category?")
+          .then(confirmed => {
+            if (confirmed) {
+              db.ref("categories/" + cat.id).remove()
+                .catch(error => {
+                  console.error("Error deleting category:", error);
+                  showNotification("Error deleting category.");
+                });
+            }
+          });
+      });
+      actionCell.appendChild(deleteBtn);
+      row.appendChild(actionCell);
+    }
     
-    categoryList.appendChild(li);
+    table.appendChild(row);
   });
+  
+  container.appendChild(table);
 }
 
 function populateExpenseCategoryDropdown() {
