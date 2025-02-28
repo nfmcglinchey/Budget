@@ -1117,75 +1117,77 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-    const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+  const themeCheckbox = document.getElementById('theme-toggle-checkbox');
 
-    // Function to apply dark or light mode
-    function applyTheme(isDarkMode) {
-        if (isDarkMode) {
-            document.body.classList.add('dark-mode');
-            localStorage.setItem('theme', 'dark');
-            themeCheckbox.checked = true;
-        } else {
-            document.body.classList.remove('dark-mode');
-            localStorage.setItem('theme', 'light');
-            themeCheckbox.checked = false;
-        }
-    }
+  // Remove default forcing of dark mode; use geolocation to set the theme.
+  if (!localStorage.getItem('theme')) {
+    getUserLocation();
+  } else if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+    themeCheckbox.checked = true;
+  } else {
+    document.body.classList.remove('dark-mode');
+    themeCheckbox.checked = false;
+  }
 
-    // Function to get user's location
-    function getUserLocation() {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                function (position) {
-                    const { latitude, longitude } = position.coords;
-                    fetchSunriseSunset(latitude, longitude);
-                },
-                function () {
-                    console.log("Geolocation permission denied. Using default dark mode.");
-                    applyTheme(true); // Default to dark mode if location is not available
-                }
-            );
-        } else {
-            console.log("Geolocation not supported by this browser.");
-            applyTheme(true); // Default to dark mode
-        }
-    }
-
-    // Function to fetch sunrise and sunset times
-    function fetchSunriseSunset(lat, lon) {
-        const apiUrl = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`;
-        fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                const sunrise = new Date(data.results.sunrise);
-                const sunset = new Date(data.results.sunset);
-                const now = new Date();
-
-                // Convert to local time zone
-                const localOffset = now.getTimezoneOffset() * 60000;
-                const sunriseLocal = new Date(sunrise.getTime() - localOffset);
-                const sunsetLocal = new Date(sunset.getTime() - localOffset);
-
-                // Apply dark mode if current time is outside sunrise-sunset
-                applyTheme(now < sunriseLocal || now > sunsetLocal);
-            })
-            .catch(error => {
-                console.error("Error fetching sunrise-sunset data:", error);
-                applyTheme(true); // Default to dark mode in case of error
-            });
-    }
-
-    // If no stored preference, use location-based theme
-    if (!localStorage.getItem('theme')) {
-        getUserLocation();
+  themeCheckbox.addEventListener('change', function() {
+    if (themeCheckbox.checked) {
+      document.body.classList.add('dark-mode');
+      localStorage.setItem('theme', 'dark');
     } else {
-        // Apply stored preference
-        applyTheme(localStorage.getItem('theme') === 'dark');
+      document.body.classList.remove('dark-mode');
+      localStorage.setItem('theme', 'light');
     }
+  });
 
-    // Manual toggle event listener
-    themeCheckbox.addEventListener('change', function () {
-        applyTheme(themeCheckbox.checked);
-    });
+  function getUserLocation() {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          const { latitude, longitude } = position.coords;
+          fetchSunriseSunset(latitude, longitude);
+        },
+        function () {
+          // If geolocation permission is denied, default to light mode.
+          document.body.classList.remove('dark-mode');
+          themeCheckbox.checked = false;
+          localStorage.setItem('theme', 'light');
+        }
+      );
+    } else {
+      // If not supported, default to light mode.
+      document.body.classList.remove('dark-mode');
+      themeCheckbox.checked = false;
+      localStorage.setItem('theme', 'light');
+    }
+  }
+
+  function fetchSunriseSunset(lat, lon) {
+    const apiUrl = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`;
+    fetch(apiUrl)
+      .then(response => response.json())
+      .then(data => {
+        const sunrise = new Date(data.results.sunrise);
+        const sunset = new Date(data.results.sunset);
+        const now = new Date();
+
+        // Remove the extra localOffset subtraction
+        if (now < sunrise || now > sunset) {
+          document.body.classList.add('dark-mode');
+          themeCheckbox.checked = true;
+          localStorage.setItem('theme', 'dark');
+        } else {
+          document.body.classList.remove('dark-mode');
+          themeCheckbox.checked = false;
+          localStorage.setItem('theme', 'light');
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching sunrise-sunset data:", error);
+        // On error, default to light mode.
+        document.body.classList.remove('dark-mode');
+        themeCheckbox.checked = false;
+        localStorage.setItem('theme', 'light');
+      });
+  }
 });
-
