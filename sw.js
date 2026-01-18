@@ -1,90 +1,57 @@
-const CACHE_NAME = 'budget-tracker-cache-v2';
-const urlsToCache = [
+const CACHE_NAME = 'budget-tracker-cache-v4';
+
+// App shell only (Firebase data is network-based)
+const URLS_TO_CACHE = [
+  './',
   './index.html',
-  './style.css',
-  './script.js',
+  './style.css?v=4',
+  './script.js?v=4',
   './manifest.json',
-  'https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap',
-  'https://cdn.jsdelivr.net/npm/chart.js',
-  'https://www.gstatic.com/firebasejs/11.3.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/11.3.0/firebase-database-compat.js'
+  './icons/icon-192.png'
 ];
 
-// Install event - Cache assets for offline use
-self.addEventListener('install', event => {
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
   );
   self.skipWaiting();
 });
 
-// Activate event - Cleanup old caches
-self.addEventListener('activate', event => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames
-          .filter(cache => cache !== CACHE_NAME)
-          .map(cache => caches.delete(cache))
-      );
-    })
+    caches.keys().then((names) =>
+      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+    )
   );
   self.clients.claim();
 });
 
-// Fetch event - Serve cached assets & handle offline requests
-self.addEventListener('fetch', event => {
-  if (event.request.method === 'GET') {
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+
+  // Only handle GET
+  if (req.method !== 'GET') return;
+
+  // Cache-first for same-origin app files
+  const url = new URL(req.url);
+  if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(event.request)
-        .then(response => response || fetch(event.request))
+      caches.match(req).then((cached) => cached || fetch(req).then((resp) => {
+        // Update cache in the background
+        const copy = resp.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        return resp;
+      }).catch(() => caches.match('./index.html')))
     );
-  } else if (event.request.method === 'POST') {
-    event.respondWith(handleOfflinePost(event));
-  }
-});
-
-// Handle offline POST requests (store expenses locally)
-async function handleOfflinePost(event) {
-  try {
-    const response = await fetch(event.request);
-    return response;
-  } catch {
-    const clonedRequest = event.request.clone();
-    const expenseData = await clonedRequest.json();
-    let offlineExpenses = JSON.parse(localStorage.getItem('offlineExpenses')) || [];
-    offlineExpenses.push(expenseData);
-    localStorage.setItem('offlineExpenses', JSON.stringify(offlineExpenses));
-    return new Response(JSON.stringify({ message: 'Saved offline' }), { status: 201 });
-  }
-}
-
-// Background Sync - Sync offline expenses when reconnected
-self.addEventListener('sync', event => {
-  if (event.tag === 'syncExpenses') {
-    event.waitUntil(syncExpenses());
-  }
-});
-
-async function syncExpenses() {
-  const offlineExpenses = JSON.parse(localStorage.getItem('offlineExpenses')) || [];
-  if (offlineExpenses.length === 0) return;
-
-  for (const expense of offlineExpenses) {
-    await fetch('https://budget-data-b9bcc-default-rtdb.firebaseio.com/expenses.json', {
-      method: 'POST',
-      body: JSON.stringify(expense),
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return;
   }
 
-  localStorage.removeItem('offlineExpenses');
-}
-
-// Register sync when online again
-self.addEventListener('online', () => {
-  navigator.serviceWorker.ready.then(registration => {
-    registration.sync.register('syncExpenses');
-  });
+  // For cross-origin (fonts/CDNs), do network-first with cache fallback
+  event.respondWith(
+    fetch(req).then((resp) => {
+      const copy = resp.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+      return resp;
+    }).catch(() => caches.match(req))
+  );
 });
