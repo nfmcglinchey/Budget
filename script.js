@@ -1,3 +1,4 @@
+window.__APP_SCRIPT_LOADED = true;
 /* Firebase Configuration */
 const firebaseConfig = {
   apiKey: "AIzaSyA6ZFSK7jPIkiEv47yl8q-O1jh8DNvOsiI",
@@ -9,8 +10,157 @@ const firebaseConfig = {
   appId: "1:798831217373:web:0d011f497ad3b9ca85a934"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let db = null;
+let __firebaseInitOk = false;
+try {
+  if (typeof firebase === 'undefined') throw new Error('Firebase SDK not loaded');
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  __firebaseInitOk = true;
+} catch (e) {
+  console.error('Firebase init failed:', e);
+  window.__FIREBASE_INIT_ERROR = String(e && e.message ? e.message : e);
+}
+
+
+
+// --- UI Notifications ---
+function showNotification(message, timeoutMs = 2500) {
+  const el = document.getElementById('notification');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => {
+    el.classList.remove('show');
+    // keep text for screen readers briefly, then clear
+    setTimeout(() => { el.textContent = ''; }, 300);
+  }, timeoutMs);
+}
+
+// --- Household Sync (shared across devices) ---
+let currentHouseholdCode = null;
+let householdBaseRef = null;
+let categoriesRef = null;
+let expensesRef = null;
+let categoriesListener = null;
+
+function normalizeHouseholdCode(code) {
+  return String(code || '').trim();
+}
+
+function generateHouseholdCode() {
+  // short, human-shareable code
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for (let i = 0; i < 8; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
+}
+
+function getStoredHouseholdCode() {
+  return normalizeHouseholdCode(localStorage.getItem('householdCode'));
+}
+
+function setStoredHouseholdCode(code) {
+  localStorage.setItem('householdCode', normalizeHouseholdCode(code));
+}
+
+function updateHouseholdUI() {
+  const input = document.getElementById('household-code');
+  const label = document.getElementById('active-household-label');
+  if (input) input.value = currentHouseholdCode || '';
+  if (label) label.textContent = currentHouseholdCode ? `Active Household: ${currentHouseholdCode}` : '';
+}
+
+function bindHousehold(code) {
+  const normalized = normalizeHouseholdCode(code);
+  if (!normalized) return;
+
+  // Detach listeners tied to old household
+  try {
+    if (categoriesRef && categoriesListener) categoriesRef.off('value', categoriesListener);
+  } catch (_) {}
+  try {
+    if (expensesRef && expensesListener) expensesRef.off('value', expensesListener);
+  } catch (_) {}
+
+  currentHouseholdCode = normalized;
+  householdBaseRef = db.ref(`households/${currentHouseholdCode}`);
+  categoriesRef = householdBaseRef.child('categories');
+  expensesRef = householdBaseRef.child('expenses');
+
+  updateHouseholdUI();
+
+  // Re-load data under the new household
+  initHouseholdSyncUI();
+}
+
+function initHouseholdSyncUI\(\) \{
+  if (!__firebaseInitOk || !db) {
+    showNotification('Firebase did not load. If you're opening from a file or zip preview, host the folder and reload.');
+    return;
+  }
+
+  const saveBtn = document.getElementById('save-household-code-button');
+  const copyBtn = document.getElementById('copy-household-code-button');
+  const newBtn = document.getElementById('new-household-code-button');
+  const input = document.getElementById('household-code');
+
+  if (saveBtn && input) {
+    saveBtn.addEventListener('click', () => {
+      const code = normalizeHouseholdCode(input.value);
+      if (!code) {
+        showNotification('Enter a Household Code.');
+        return;
+      }
+      setStoredHouseholdCode(code);
+      bindHousehold(code);
+      showNotification('Household Code saved.');
+    });
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      if (!currentHouseholdCode) {
+        showNotification('No Household Code set.');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(currentHouseholdCode);
+        showNotification('Household Code copied.');
+      } catch {
+        // Fallback
+        const tmp = document.createElement('textarea');
+        tmp.value = currentHouseholdCode;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+        showNotification('Household Code copied.');
+      }
+    });
+  }
+
+  if (newBtn) {
+    newBtn.addEventListener('click', async () => {
+      const confirmed = await customConfirm('Create a new household? This switches you to a fresh budget.');
+      if (!confirmed) return;
+      const newCode = generateHouseholdCode();
+      setStoredHouseholdCode(newCode);
+      bindHousehold(newCode);
+      showNotification('New household created. Share the code to sync devices.');
+    });
+  }
+
+  // Initialize code
+  let code = getStoredHouseholdCode();
+  if (!code) {
+    code = generateHouseholdCode();
+    setStoredHouseholdCode(code);
+    showNotification('Household Code created. Open Sync to copy and share it.');
+  }
+  bindHousehold(code);
+}
 
 let expensesListener = null;
 let spendingChart;
@@ -50,36 +200,59 @@ function parseLocalDate(dateString) {
 /* Category Management */
 async function loadCategories() {
   try {
-    db.ref("categories").on("value", snapshot => {
+    if (!categoriesRef) {
+      console.error('categoriesRef not set. Household not initialized.');
+      return;
+    }
+
+    // Detach any prior listener (important when switching households)
+    if (categoriesListener) {
+      try { categoriesRef.off('value', categoriesListener); } catch (_) {}
+    }
+
+    categoriesListener = (snapshot) => {
       if (snapshot.numChildren() === 0) {
-        const defaults = [
-          { name: "Groceries", monthly: 1200 },
-          { name: "Dining Out", monthly: 400 },
-          { name: "Entertainment", monthly: 200 },
-          { name: "Haircuts", monthly: 52 },
-          { name: "Alcohol", monthly: 150 },
-          { name: "Weekly Allowance", monthly: 1040 },
-          { name: "Miscellaneous", monthly: 0 }
-        ];
-        defaults.forEach(defaultCat => {
-          db.ref("categories").push(defaultCat);
-        });
+        // Create defaults once per household (avoid duplicates across devices)
+        const metaRef = householdBaseRef.child('_meta/defaultsCreated');
+        metaRef.transaction(current => current || Date.now())
+          .then(result => {
+            if (!result.committed) return;
+            // Only the client that commits the transaction seeds defaults
+            const defaults = [
+              { name: 'Groceries', monthly: 1200 },
+              { name: 'Dining Out', monthly: 400 },
+              { name: 'Entertainment', monthly: 200 },
+              { name: 'Haircuts', monthly: 52 },
+              { name: 'Alcohol', monthly: 150 },
+              { name: 'Weekly Allowance', monthly: 1040 },
+              { name: 'Miscellaneous', monthly: 0 }
+            ];
+            defaults.forEach(defaultCat => categoriesRef.push(defaultCat));
+          })
+          .catch(err => {
+            console.error('Error seeding default categories:', err);
+            showNotification('Error creating default categories.');
+          });
         return;
       }
+
       budgetCategories = [];
       snapshot.forEach(childSnapshot => {
         let cat = childSnapshot.val();
         cat.id = childSnapshot.key;
         budgetCategories.push(cat);
       });
+
       renderCategoryList();
       populateExpenseCategoryDropdown();
       loadBudget();
       loadExpenses(); // ensures expenses recalc after categories update
-    });
+    };
+
+    categoriesRef.on('value', categoriesListener);
   } catch (error) {
-    console.error("Error loading categories:", error);
-    showNotification("Error loading categories.");
+    console.error('Error loading categories:', error);
+    showNotification('Error loading categories.');
   }
 }
 
@@ -130,7 +303,7 @@ function renderCategoryList() {
             customConfirm("Would you like to update all previous expenses under this category?")
               .then(confirmed => {
                 if (confirmed) {
-                  db.ref("expenses")
+                  expensesRef
                     .orderByChild("category")
                     .equalTo(cat.name)
                     .once("value")
@@ -140,7 +313,7 @@ function renderCategoryList() {
                       });
                     })
                     .then(() => {
-                      return db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
+                      return categoriesRef.child(cat.id).update({ name: newName, monthly: newMonthly });
                     })
                     .then(() => {
                       showNotification("Category and related expenses updated successfully.");
@@ -150,7 +323,7 @@ function renderCategoryList() {
                       showNotification("Error updating category or expenses.");
                     });
                 } else {
-                  db.ref("categories/" + cat.id)
+                  categoriesRef.child(cat.id)
                     .update({ name: newName, monthly: newMonthly })
                     .then(() => {
                       showNotification("Category updated successfully.");
@@ -162,7 +335,7 @@ function renderCategoryList() {
                 }
               });
           } else {
-            db.ref("categories/" + cat.id)
+            categoriesRef.child(cat.id)
               .update({ monthly: newMonthly })
               .then(() => {
                 showNotification("Category updated successfully.");
@@ -185,7 +358,7 @@ function renderCategoryList() {
         customConfirm("Delete this category?")
           .then(confirmed => {
             if (confirmed) {
-              db.ref("categories/" + cat.id).remove()
+              categoriesRef.child(cat.id).remove()
                 .catch(error => {
                   console.error("Error deleting category:", error);
                   showNotification("Error deleting category.");
@@ -235,7 +408,7 @@ function renderCategoryList() {
           customConfirm("Swipe delete: Are you sure you want to delete this category?")
             .then(confirmed => {
               if (confirmed) {
-                db.ref("categories/" + cat.id).remove()
+                categoriesRef.child(cat.id).remove()
                   .catch(error => {
                     console.error("Error deleting category:", error);
                     showNotification("Error deleting category.");
@@ -284,7 +457,7 @@ function renderCategoryList() {
             customConfirm("Would you like to update all previous expenses under this category?")
               .then(confirmed => {
                 if (confirmed) {
-                  db.ref("expenses")
+                  expensesRef
                     .orderByChild("category")
                     .equalTo(cat.name)
                     .once("value")
@@ -294,7 +467,7 @@ function renderCategoryList() {
                       });
                     })
                     .then(() => {
-                      return db.ref("categories/" + cat.id).update({ name: newName, monthly: newMonthly });
+                      return categoriesRef.child(cat.id).update({ name: newName, monthly: newMonthly });
                     })
                     .then(() => {
                       showNotification("Category and related expenses updated successfully.");
@@ -304,7 +477,7 @@ function renderCategoryList() {
                       showNotification("Error updating category or expenses.");
                     });
                 } else {
-                  db.ref("categories/" + cat.id)
+                  categoriesRef.child(cat.id)
                     .update({ name: newName, monthly: newMonthly })
                     .then(() => {
                       showNotification("Category updated successfully.");
@@ -316,7 +489,7 @@ function renderCategoryList() {
                 }
               });
           } else {
-            db.ref("categories/" + cat.id)
+            categoriesRef.child(cat.id)
               .update({ monthly: newMonthly })
               .then(() => {
                 showNotification("Category updated successfully.");
@@ -338,7 +511,7 @@ function renderCategoryList() {
         customConfirm("Delete this category?")
           .then(confirmed => {
             if (confirmed) {
-              db.ref("categories/" + cat.id).remove()
+              categoriesRef.child(cat.id).remove()
                 .catch(error => {
                   console.error("Error deleting category:", error);
                   showNotification("Error deleting category.");
@@ -378,7 +551,7 @@ function addCategory() {
     showNotification("Duplicate category name.");
     return;
   }
-  db.ref("categories").push({ name: newName, monthly: newMonthly })
+  categoriesRef.push({ name: newName, monthly: newMonthly })
     .then(() => {
       document.getElementById("new-category-name").value = "";
       document.getElementById("new-category-monthly").value = "";
@@ -451,10 +624,10 @@ async function addExpense() {
     const expenseData = { date, category, description, amount };
 
     if (editingExpenseId) {
-      await db.ref("expenses/" + editingExpenseId).update(expenseData);
+      await expensesRef.child(editingExpenseId).update(expenseData);
       showNotification("Expense updated successfully");
     } else {
-      await db.ref("expenses").push(expenseData);
+      await expensesRef.push(expenseData);
       showNotification("Expense added successfully");
     }
     resetExpenseForm();
@@ -517,7 +690,7 @@ function loadExpenses() {
   endOfWeek.setDate(startOfWeek.getDate() + 7);
 
   if (expensesListener) {
-    db.ref("expenses").off("value", expensesListener);
+    expensesRef.off("value", expensesListener);
   }
   expensesListener = (snapshot) => {
     expensesTable.innerHTML = `
@@ -695,7 +868,7 @@ function loadExpenses() {
     updateChartDebounced();
     updatePieChart();
   };
-  db.ref("expenses").on("value", expensesListener);
+  expensesRef.on("value", expensesListener);
 }
 
 function deleteExpense(expenseId) {
@@ -703,7 +876,7 @@ function deleteExpense(expenseId) {
     console.error("Invalid expense ID");
     return;
   }
-  db.ref("expenses/" + expenseId).remove()
+  expensesRef.child(expenseId).remove()
     .then(() => {
       console.log("Expense deleted successfully");
       showNotification("Expense deleted successfully");
@@ -1116,7 +1289,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Other initializations
   setTimeout(setDefaultDate, 500);
-  loadCategories();
+  initHouseholdSyncUI();
   populateFilters();
   initializeChart();
   initializePieChart();
