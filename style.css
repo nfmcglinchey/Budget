@@ -587,3 +587,117 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+
+/* Fixed expenses flip card */
+.flip-card {
+  perspective: 1200px;
+}
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  min-height: 320px;
+  transition: transform 0.5s ease;
+  transform-style: preserve-3d;
+}
+.flip-card.is-flipped .flip-card-inner,
+.flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 14px;
+  padding: 12px;
+}
+.flip-card-front {
+  background: var(--card-bg);
+}
+.flip-card-back {
+  background: var(--card-bg);
+  transform: rotateY(180deg);
+  overflow-y: auto;
+}
+
+.fixed-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.fixed-header-row h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.fixed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.fixed-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+body.dark-mode .fixed-item {
+  border-color: rgba(255,255,255,0.12);
+}
+
+.fixed-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.fixed-item-name {
+  font-weight: 600;
+}
+.fixed-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+.fixed-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.25);
+  color: inherit;
+}
+body.dark-mode button.secondary {
+  border-color: rgba(255,255,255,0.25);
+}
+
+.muted {
+  opacity: 0.75;
+}
+.small {
+  font-size: 0.9rem;
+}
+.divider {
+  height: 1px;
+  background: rgba(0,0,0,0.1);
+  margin: 14px 0;
+}
+body.dark-mode .divider {
+  background: rgba(255,255,255,0.14);
+}
+
+.fixed-form-actions {
+  display: flex;
+  gap: 10px;
+}
