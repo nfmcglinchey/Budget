@@ -43,7 +43,9 @@ let currentHouseholdCode = null;
 let householdBaseRef = null;
 let categoriesRef = null;
 let expensesRef = null;
+let fixedExpensesRef = null;
 let categoriesListener = null;
+let fixedExpensesListener = null;
 
 function normalizeHouseholdCode(code) {
   return String(code || '').trim();
@@ -88,11 +90,14 @@ function bindHousehold(code) {
   householdBaseRef = db.ref(`households/${currentHouseholdCode}`);
   categoriesRef = householdBaseRef.child('categories');
   expensesRef = householdBaseRef.child('expenses');
+  fixedExpensesRef = householdBaseRef.child('fixedExpenses');
 
   updateHouseholdUI();
+  attachFixedExpensesListener();
 
   // Re-load data under the new household
   initHouseholdSyncUI();
+  initFixedExpensesUI();
 }
 
 function initHouseholdSyncUI\(\) \{
@@ -245,6 +250,7 @@ async function loadCategories() {
 
       renderCategoryList();
       populateExpenseCategoryDropdown();
+      populateFixedCategoryDropdown();
       loadBudget();
       loadExpenses(); // ensures expenses recalc after categories update
     };
@@ -538,6 +544,272 @@ function populateExpenseCategoryDropdown() {
     option.textContent = cat.name;
     categoryDropdown.appendChild(option);
   });
+}
+
+
+function populateFixedCategoryDropdown() {
+  const sel = document.getElementById("fixed-category");
+  if (!sel) return;
+  sel.innerHTML = "";
+  budgetCategories.forEach(cat => {
+    const option = document.createElement("option");
+    option.value = cat.name;
+    option.textContent = cat.name;
+    sel.appendChild(option);
+  });
+}
+
+// --- Fixed Expenses ---
+let fixedExpenses = []; // {id,name,category,amount,frequency,dueDay,lastPaidISO}
+
+function parseCurrencyInput(value) {
+  const cleaned = String(value || '').replace(/[^0-9.\-]/g, '');
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : null;
+}
+
+function formatCurrency(num) {
+  const n = Number(num);
+  if (!Number.isFinite(n)) return "$0.00";
+  return "$" + n.toFixed(2);
+}
+
+function getWeekRangeFridayStart(date = new Date()) {
+  // Week starts Friday (5). Range: [start, endExclusive)
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  const diff = (d.getDay() - 5 + 7) % 7;
+  const start = new Date(d);
+  start.setDate(d.getDate() - diff);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { start, end };
+}
+
+function dueDateForMonthly(dueDay, anchorDate = new Date()) {
+  const year = anchorDate.getFullYear();
+  const month = anchorDate.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const day = Math.min(Math.max(1, Number(dueDay) || 1), lastDay);
+  const due = new Date(year, month, day);
+  due.setHours(0,0,0,0);
+  return due;
+}
+
+function isPaidForMonth(item, anchorDate = new Date()) {
+  if (!item.lastPaidISO) return false;
+  const paid = new Date(item.lastPaidISO);
+  return paid.getFullYear() === anchorDate.getFullYear() && paid.getMonth() === anchorDate.getMonth();
+}
+
+function fixedItemDueThisWeek(item) {
+  if (item.frequency !== 'monthly') return false;
+  const { start, end } = getWeekRangeFridayStart(new Date());
+  const due = dueDateForMonthly(item.dueDay, new Date());
+  // if already paid this month, don't show as due
+  if (isPaidForMonth(item, new Date())) return false;
+  return due >= start && due < end;
+}
+
+function renderFixedExpenses() {
+  const dueList = document.getElementById('fixed-due-list');
+  const dueEmpty = document.getElementById('fixed-due-empty');
+  const manageList = document.getElementById('fixed-manage-list');
+  const manageEmpty = document.getElementById('fixed-manage-empty');
+  if (!dueList || !manageList) return;
+
+  dueList.innerHTML = "";
+  manageList.innerHTML = "";
+
+  const dueItems = fixedExpenses.filter(fixedItemDueThisWeek);
+  dueEmpty.style.display = dueItems.length ? "none" : "block";
+
+  manageEmpty.style.display = fixedExpenses.length ? "none" : "block";
+
+  dueItems
+    .sort((a,b) => (Number(a.dueDay)||0) - (Number(b.dueDay)||0))
+    .forEach(item => dueList.appendChild(buildFixedItemCard(item, { mode: "due" })));
+
+  fixedExpenses
+    .slice()
+    .sort((a,b) => a.name.localeCompare(b.name))
+    .forEach(item => manageList.appendChild(buildFixedItemCard(item, { mode: "manage" })));
+}
+
+function buildFixedItemCard(item, { mode }) {
+  const card = document.createElement('div');
+  card.className = 'fixed-item';
+
+  const top = document.createElement('div');
+  top.className = 'fixed-item-top';
+
+  const name = document.createElement('div');
+  name.className = 'fixed-item-name';
+  name.textContent = item.name;
+
+  const amt = document.createElement('div');
+  amt.textContent = formatCurrency(item.amount);
+
+  top.appendChild(name);
+  top.appendChild(amt);
+
+  const meta = document.createElement('div');
+  meta.className = 'fixed-item-meta';
+  meta.textContent = `${item.category} • due ${item.dueDay} • ${item.frequency}`;
+
+  const actions = document.createElement('div');
+  actions.className = 'fixed-item-actions';
+
+  if (mode === "due") {
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = 'Add to week';
+    addBtn.addEventListener('click', () => addFixedToWeek(item));
+
+    const paidBtn = document.createElement('button');
+    paidBtn.type = 'button';
+    paidBtn.className = 'secondary';
+    paidBtn.textContent = 'Mark paid';
+    paidBtn.addEventListener('click', () => markFixedPaid(item));
+
+    actions.appendChild(addBtn);
+    actions.appendChild(paidBtn);
+  } else {
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => startFixedEdit(item));
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'secondary';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => deleteFixed(item));
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+  }
+
+  card.appendChild(top);
+  card.appendChild(meta);
+  card.appendChild(actions);
+  return card;
+}
+
+function attachFixedExpensesListener() {
+  if (!fixedExpensesRef) return;
+
+  if (fixedExpensesListener) {
+    try { fixedExpensesRef.off('value', fixedExpensesListener); } catch (_) {}
+  }
+
+  fixedExpensesListener = (snapshot) => {
+    const data = snapshot.val() || {};
+    fixedExpenses = Object.keys(data).map(id => ({ id, ...data[id] }));
+    renderFixedExpenses();
+  };
+
+  fixedExpensesRef.on('value', fixedExpensesListener);
+}
+
+function resetFixedForm() {
+  document.getElementById('fixed-id').value = '';
+  document.getElementById('fixed-name').value = '';
+  document.getElementById('fixed-amount').value = '';
+  document.getElementById('fixed-frequency').value = 'monthly';
+  document.getElementById('fixed-due-day').value = '';
+  const cancelBtn = document.getElementById('fixed-cancel-button');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  const saveBtn = document.getElementById('fixed-save-button');
+  if (saveBtn) saveBtn.textContent = 'Save';
+}
+
+function startFixedEdit(item) {
+  // flip to back if needed
+  const inner = document.getElementById('fixed-flip-inner');
+  if (inner) inner.classList.add('is-flipped');
+
+  document.getElementById('fixed-id').value = item.id;
+  document.getElementById('fixed-name').value = item.name || '';
+  document.getElementById('fixed-category').value = item.category || '';
+  document.getElementById('fixed-amount').value = formatCurrency(item.amount);
+  document.getElementById('fixed-frequency').value = item.frequency || 'monthly';
+  document.getElementById('fixed-due-day').value = item.dueDay || '';
+
+  const cancelBtn = document.getElementById('fixed-cancel-button');
+  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+  const saveBtn = document.getElementById('fixed-save-button');
+  if (saveBtn) saveBtn.textContent = 'Update';
+}
+
+function deleteFixed(item) {
+  if (!fixedExpensesRef) return;
+  if (!confirm(`Delete fixed expense "${item.name}"?`)) return;
+  fixedExpensesRef.child(item.id).remove();
+}
+
+function markFixedPaid(item) {
+  if (!fixedExpensesRef) return;
+  fixedExpensesRef.child(item.id).update({ lastPaidISO: new Date().toISOString() });
+}
+
+function addFixedToWeek(item) {
+  // Adds a normal expense entry dated today with fixed item's details
+  const dateStr = new Date().toISOString().slice(0,10);
+  const payload = {
+    date: dateStr,
+    category: item.category,
+    description: item.name,
+    amount: Number(item.amount) || 0
+  };
+  addExpenseToDatabase(payload);
+}
+
+function addExpenseToDatabase(payload) {
+  if (!expensesRef) return;
+  expensesRef.push(payload);
+}
+
+function initFixedExpensesUI() {
+  const manageBtn = document.getElementById('fixed-manage-button');
+  const doneBtn = document.getElementById('fixed-done-button');
+  const inner = document.getElementById('fixed-flip-inner');
+  const form = document.getElementById('fixed-form');
+  const cancelBtn = document.getElementById('fixed-cancel-button');
+
+  if (manageBtn && inner) manageBtn.addEventListener('click', () => inner.classList.add('is-flipped'));
+  if (doneBtn && inner) doneBtn.addEventListener('click', () => { inner.classList.remove('is-flipped'); resetFixedForm(); });
+  if (cancelBtn) cancelBtn.addEventListener('click', () => resetFixedForm());
+
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!fixedExpensesRef) return;
+
+      const id = document.getElementById('fixed-id').value.trim();
+      const name = document.getElementById('fixed-name').value.trim();
+      const category = document.getElementById('fixed-category').value;
+      const amount = parseCurrencyInput(document.getElementById('fixed-amount').value);
+      const frequency = document.getElementById('fixed-frequency').value;
+      const dueDay = parseInt(document.getElementById('fixed-due-day').value, 10);
+
+      if (!name) { showNotification('Enter a name.'); return; }
+      if (!category) { showNotification('Select a category.'); return; }
+      if (amount === null) { showNotification('Enter a valid amount.'); return; }
+      if (!Number.isFinite(dueDay) || dueDay < 1 || dueDay > 31) { showNotification('Enter a due day (1–31).'); return; }
+
+      const record = { name, category, amount, frequency, dueDay };
+
+      if (id) {
+        fixedExpensesRef.child(id).update(record);
+      } else {
+        fixedExpensesRef.push(record);
+      }
+
+      resetFixedForm();
+      showNotification('Saved.');
+    });
+  }
 }
 
 function addCategory() {
@@ -1290,6 +1562,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Other initializations
   setTimeout(setDefaultDate, 500);
   initHouseholdSyncUI();
+  initFixedExpensesUI();
   populateFilters();
   initializeChart();
   initializePieChart();
