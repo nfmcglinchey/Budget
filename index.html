@@ -118,6 +118,71 @@
       </div>
     </div>
 
+
+    <!-- Fixed Expenses (Flip Card) -->
+    <div id="fixed-expenses-section" class="card collapsible">
+      <h2 class="collapsible-header">Fixed Expenses</h2>
+      <div class="collapsible-content" style="display: none;">
+        <div class="flip-card" id="fixed-flip-card">
+          <div class="flip-card-inner" id="fixed-flip-inner">
+            <!-- Front: Due this week -->
+            <div class="flip-card-face flip-card-front">
+              <div class="fixed-header-row">
+                <h3>Due This Week</h3>
+                <button class="secondary" id="fixed-manage-button" type="button">Manage</button>
+              </div>
+              <div id="fixed-due-list" class="fixed-list"></div>
+              <p class="muted small" id="fixed-due-empty" style="display:none;">No fixed items due this week.</p>
+            </div>
+
+            <!-- Back: Manage fixed expenses -->
+            <div class="flip-card-face flip-card-back">
+              <div class="fixed-header-row">
+                <h3>Manage Fixed</h3>
+                <button class="secondary" id="fixed-done-button" type="button">Done</button>
+              </div>
+
+              <form id="fixed-form" class="fixed-form">
+                <input type="hidden" id="fixed-id" />
+                <div class="form-group">
+                  <label for="fixed-name">Name:</label>
+                  <input type="text" id="fixed-name" maxlength="60" placeholder="Rent" required />
+                </div>
+                <div class="form-group">
+                  <label for="fixed-category">Category:</label>
+                  <select id="fixed-category" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="fixed-amount">Amount:</label>
+                  <input type="text" id="fixed-amount" inputmode="decimal" placeholder="$0.00" required />
+                </div>
+                <div class="form-group">
+                  <label for="fixed-frequency">Frequency:</label>
+                  <select id="fixed-frequency" required>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="fixed-due-day">Due day of month:</label>
+                  <input type="number" id="fixed-due-day" min="1" max="31" placeholder="1" required />
+                </div>
+
+                <div class="fixed-form-actions">
+                  <button id="fixed-save-button" type="submit">Save</button>
+                  <button id="fixed-cancel-button" class="secondary" type="button" style="display:none;">Cancel</button>
+                </div>
+              </form>
+
+              <div class="divider"></div>
+
+              <div id="fixed-manage-list" class="fixed-list"></div>
+              <p class="muted small" id="fixed-manage-empty" style="display:none;">No fixed expenses yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Expenses Section -->
     <div id="expenses-section" class="card collapsible">
       <h2 class="collapsible-header">Expenses</h2>
